@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script type='text/javascript'>
+        function refreshPage()
+        {
+            window.location.reload(true);
+        }
+    </script>
+</head>
+<body>
+<div id="ovirtoptimizerresult">No result received yet.</div>
+<script type='text/javascript'>
+    var api = parent.pluginApi('oVirtOptimizer');
+    var cfg = api.configObject();
+    var clusterid = window.location.href.split("#")[1];
+
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange=function() {
+        if (xmlHttp.readyState==4
+                && xmlHttp.status==200) {
+            console.log(xmlHttp.responseText);
+            document.getElementById("ovirtoptimizerresult").innerHTML=xmlHttp.responseText;
+        }
+    };
+    xmlHttp.open("GET", cfg["baseurl"]+clusterid);
+    xmlHttp.send();
+    setTimeout(refreshPage, 30000);
+</script>
+</body>
+</html>

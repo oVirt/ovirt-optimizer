@@ -1,0 +1,15 @@
+{
+
+    // Custom configuration associated with the plugin (optional)
+    // This overrides default configuration within descriptor, if any
+    "config": { "baseurl": "http://localhost:8080/ovirt-optimizer/result/" },
+
+    // Whether the plugin should be loaded on WebAdmin startup (optional)
+    // Default value is true
+    "enabled": true,
+
+    // Relative order in which the plugin will be loaded (optional)
+    // Default value is Integer.MAX_VALUE (lowest order)
+    "order": 0
+
+}

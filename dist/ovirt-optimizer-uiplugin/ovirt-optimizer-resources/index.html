@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+<script type='text/javascript'>
+    var api = parent.pluginApi('oVirtOptimizer');
+    api.register({
+        UiInit: function() {
+            api.addSubTab('Cluster', 'Optimizer result', 'ovirt-optimizer-cluster-tab',
+                'plugin/oVirtOptimizer/result.html');
+        },
+        ClusterSelectionChange: function() {
+            if (arguments.length != 1) {
+                api.setTabAccessible('ovirt-optimizer-cluster-tab', false);
+            }
+            else {
+                api.setTabContentUrl('ovirt-optimizer-cluster-tab',
+                        'plugin/oVirtOptimizer/result.html#'+arguments[0].id);
+                api.setTabAccessible('ovirt-optimizer-cluster-tab', true);
+            }
+        }
+    });
+    api.ready();
+</script>
+</body>
+</html>

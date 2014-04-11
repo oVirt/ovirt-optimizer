@@ -1,0 +1,5 @@
+target
+.idea
+ovirt-planner.iml
+.DS_store
+*.iml

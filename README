@@ -1,0 +1,6 @@
+How to prepare a release:
+
+Update the version and changelog in the spec file
+
+run:
+  git archive --format=tgz >ovirt-optimizer-{version}.tar.gz

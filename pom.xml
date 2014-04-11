@@ -1,0 +1,87 @@
+<project>
+    <artifactId>ovirt-optimizer</artifactId>
+    <modules>
+        <module>ovirt-optimizer-core</module>
+        <module>ovirt-optimizer-jboss7</module>
+        <module>ovirt-optimizer-jetty</module>
+    </modules>
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>org.ovirt.optimizer</groupId>
+    <version>${project.version}</version>
+    <name>oVirt optimizer service</name>
+    <description>
+        This service runs optimization algorithms to determine the optimal
+        cluster balancing.
+    </description>
+    <packaging>pom</packaging>
+
+    <properties>
+        <project.version>0.1</project.version>
+
+        <!-- Explicitly declaring the source encoding eliminates the following
+            message: -->
+        <!-- [WARNING] Using platform encoding (UTF-8 actually) to copy filtered
+            resources, i.e. build is platform dependent! -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- JBoss dependency versions -->
+        <version.org.jboss.as.plugins.maven.plugin>7.3.Final</version.org.jboss.as.plugins.maven.plugin>
+        <version.org.jboss.spec.jboss.javaee.6.0>3.0.6.Final</version.org.jboss.spec.jboss.javaee.6.0>
+
+        <!-- other plugin versions -->
+        <version.compiler.plugin>2.3.1</version.compiler.plugin>
+        <version.ejb.plugin>2.3</version.ejb.plugin>
+
+        <!-- maven-compiler-plugin -->
+        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>1.7</maven.compiler.source>
+
+        <!-- fixes deployment issue //-->
+        <xpp3_min.version>1.1.4c</xpp3_min.version>
+    </properties>
+
+    <build>
+        <finalName>${project.artifactId}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- TODO move to standalone version //-->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>2.4</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <mainClass>org.ovirt.optimizer.Main</mainClass>
+                        </manifest>
+                    </archive>
+                </configuration>
+            </plugin>
+            <!-- Compiler plugin enforces Java compatibility version
+                 and activates annotation processors -->
+            <plugin>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.compiler.plugin}</version>
+                <configuration>
+                    <source>${maven.compiler.source}</source>
+                    <target>${maven.compiler.target}</target>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+</project>

@@ -1,0 +1,48 @@
+package org.ovirt.optimizer.service;
+dialect  "java"
+
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScoreHolder;
+import org.ovirt.optimizer.service.problemspace.VmAssignment;
+import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.VM;
+
+import org.ovirt.optimizer.service.problemspace.VmAssignment;
+
+// This rule slightly prioritizes solutions with less migrations
+// it should be the tie breaker when more good solutions are available
+global HardSoftScoreHolder scoreHolder;
+
+rule "migrationNotNeeded"
+    when VmAssignment(host == vm.host)
+    then scoreHolder.addSoftConstraintMatch(kcontext, 1);
+end
+
+// Check whether host has enough memory to hold just the guaranteed
+// memory for all the VMs
+rule "notEnoughGuaranteedMemory"
+    when
+        $host : Host($memory : memory)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+            VmAssignment(
+                host == $host,
+                $requiredMemory : vm.memoryPolicy.guaranteed),
+            sum($requiredMemory)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end
+
+// Check whether the host has enough memory to hold all the VMs while
+// taking overcommitment into account
+rule "notEnoughMemory"
+    when
+        $host : Host($memory : memory * cluster.memoryPolicy.overCommit.percent)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+            VmAssignment(
+                host == $host,
+                $requiredMemory : vm.memory),
+            sum($requiredMemory)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end

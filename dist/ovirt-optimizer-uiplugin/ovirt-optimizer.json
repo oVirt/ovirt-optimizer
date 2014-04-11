@@ -1,0 +1,6 @@
+{
+    "name": "oVirtOptimizer",
+    "url": "plugin/oVirtOptimizer/index.html",
+    "resourcePath": "ovirt-optimizer-resources",
+    "config": { "baseurl": "http://localhost:8080/ovirt-optimizer/result/" }
+}
