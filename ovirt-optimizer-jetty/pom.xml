@@ -45,8 +45,13 @@
             <version>1.0-SP1</version>
         </dependency>
         <dependency>
+            <groupId>log4j</groupId>
+            <artifactId>log4j</artifactId>
+            <version>1.2.17</version>
+        </dependency>
+        <dependency>
             <groupId>org.slf4j</groupId>
-            <artifactId>slf4j-simple</artifactId>
+            <artifactId>slf4j-log4j12</artifactId>
             <version>1.7.7</version>
         </dependency>
     </dependencies>
@@ -99,16 +104,11 @@
                         <artifactId>jetty-maven-plugin</artifactId>
                         <version>${jettyVersion}</version>
                         <configuration>
-                            <webApp>
-                                <contextPath>src/main/webapp</contextPath>
-                                <descriptor>src/main/webapp/WEB-INF/web.xm</descriptor>
-                            </webApp>
+                            <contextPath>/ovirt-optimizer</contextPath>
                             <stopPort>1353</stopPort>
                             <stopKey>quit</stopKey>
                             <contextXml>src/main/webapp/WEB-INF/jetty-web.xml</contextXml>
-                            <environmentVariables>
-                                <OVIRT_OPTIMIZER_CONFIG>${project.basedir}/../dist/etc/ovirt-optimizer.properties</OVIRT_OPTIMIZER_CONFIG>
-                            </environmentVariables>
+                            <jvmArgs>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005</jvmArgs>
                         </configuration>
                     </plugin>
                 </plugins>

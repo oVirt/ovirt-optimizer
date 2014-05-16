@@ -1,6 +1,5 @@
 package org.ovirt.optimizer.util;
 
-import org.apache.log4j.Logger;
 import org.quartz.Job;
 import org.quartz.JobDetail;
 import org.quartz.Scheduler;
@@ -8,6 +7,7 @@ import org.quartz.SchedulerException;
 import org.quartz.SchedulerFactory;
 import org.quartz.Trigger;
 import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.Logger;
 
 import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
@@ -88,7 +88,7 @@ public class SchedulerService {
             scheduler.start();
             log.info("Quartz scheduler started");
         } catch (SchedulerException e) {
-            log.error(e);
+            log.error("Quartz scheduler startup failed", e);
         }
     }
 
@@ -98,7 +98,7 @@ public class SchedulerService {
             scheduler.shutdown(true);
             log.info("Quartz scheduler stopped");
         } catch (SchedulerException e) {
-            log.error(e);
+            log.error("Quartz scheduler shutdown failed", e);
         }
     }
 }

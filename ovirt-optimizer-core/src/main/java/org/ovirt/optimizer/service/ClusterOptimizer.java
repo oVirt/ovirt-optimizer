@@ -1,23 +1,28 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.log4j.Logger;
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import org.optaplanner.core.api.score.constraint.ConstraintMatch;
+import org.optaplanner.core.api.score.constraint.ConstraintMatchTotal;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
-import org.optaplanner.core.config.solver.XmlSolverFactory;
-import org.optaplanner.core.impl.event.BestSolutionChangedEvent;
-import org.optaplanner.core.impl.event.SolverEventListener;
+import org.optaplanner.core.api.solver.event.BestSolutionChangedEvent;
+import org.optaplanner.core.api.solver.event.SolverEventListener;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.optaplanner.core.impl.solver.ProblemFactChange;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
-import org.ovirt.optimizer.service.problemspace.OptimalDistributionSolution;
-import org.ovirt.optimizer.service.problemspace.VmAssignment;
+import org.ovirt.optimizer.service.problemspace.ClusterSituation;
+import org.ovirt.optimizer.service.problemspace.Migration;
+import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -26,10 +31,11 @@ import java.util.Set;
  * of a single cluster.
  */
 public class ClusterOptimizer implements Runnable {
-    private static Logger log = Logger.getLogger(ClusterOptimizer.class);
+    private static Logger log = LoggerFactory.getLogger(ClusterOptimizer.class);
+    final static int MAX_STEPS = 10;
     final Solver solver;
     final String clusterId;
-    OptimalDistributionSolution bestSolution;
+    private volatile OptimalDistributionStepsSolution bestSolution;
     final ClusterInfoUpdater updater;
     final Finished finishedCallback;
 
@@ -37,11 +43,105 @@ public class ClusterOptimizer implements Runnable {
         void solvingFinished(ClusterOptimizer planner, Thread thread);
     }
 
+    /**
+     * Use the state in the current best solution to recompute score of
+     * provided migrations.
+     *
+     * This method creates a new solver with disabled construction heuristics
+     * and local search.
+     *
+     * @param migrationIds
+     * @return HardSoftScore of the migrations
+     */
+    HardSoftScore computeScore(List<Map<String, String>> migrationIds) {
+        OptimalDistributionStepsSolution sourceSolution = null;
+
+        synchronized (ClusterOptimizer.this) {
+            sourceSolution = bestSolution;
+        }
+
+        log.debug("Reevaluating solution {}", migrationIds);
+
+        SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/scoreonly.xml");
+        Solver solver = solverFactory.buildSolver();
+
+        /* Reconstruct the Solution object with current facts */
+        OptimalDistributionStepsSolution solution = new OptimalDistributionStepsSolution();
+        solution.setHosts(sourceSolution.getHosts());
+        solution.setVms(sourceSolution.getVms());
+        solution.setOtherFacts(sourceSolution.getOtherFacts());
+
+        /* Get id to object mappings for hosts and VMs */
+        Map<String, Host> hosts = new HashMap<>();
+        for (Host h: solution.getHosts()) {
+            hosts.put(h.getId(), h);
+            log.debug("Found host {}", h.getId());
+        }
+
+        Map<String, VM> vms = new HashMap<>();
+        for (VM vm: solution.getVms()) {
+            vms.put(vm.getId(), vm);
+            log.debug("Found VM {}", vm.getId());
+        }
+
+        /* Recreate the migration objects */
+        List<Migration> migrations = new ArrayList<>();
+        for (Map<String, String> migrationStep: migrationIds) {
+            for (Map.Entry<String, String> singleMigration: migrationStep.entrySet()) {
+                // Create new migration step
+                Migration migration = new Migration();
+                String hostId = singleMigration.getValue();
+
+                // Inject current host data
+                if (hosts.containsKey(hostId)) {
+                    migration.setDestination(hosts.get(hostId));
+                    log.debug("Setting destination for {} to {}", migration, hostId);
+                }
+                else {
+                    log.warn("Host {} is no longer valid", hostId);
+                }
+
+                // Inject current VM data
+                String vmId = singleMigration.getKey();
+                if (vms.containsKey(vmId)) {
+                    migration.setVm(vms.get(vmId));
+                    log.debug("Setting VM for {} to {}", migration, vmId);
+                }
+                else {
+                    log.warn("VM {} is no longer valid", vmId);
+                }
+
+                // Add the step to the list of steps
+                migrations.add(migration);
+            }
+        }
+
+        /* Compute the migration ordering cache */
+        solution.setSteps(migrations);
+        solution.establishStepOrdering();
+
+        /* Prepare shadow variables */
+        ClusterSituation previous = solution;
+        for (Migration m: migrations) {
+            m.recomputeSituationAfter(previous);
+            previous = m;
+        }
+
+        /* Recompute score */
+        solver.solve(solution);
+
+        if (log.isDebugEnabled()) {
+            recomputeScoreUsingScoreDirector(solver, solution);
+        }
+
+        return solution.getScore();
+    }
+
     public ClusterOptimizer(OvirtClient client, final String clusterId, Finished finishedCallback) {
         this.clusterId = clusterId;
         this.finishedCallback = finishedCallback;
 
-        SolverFactory solverFactory = new XmlSolverFactory("/org/ovirt/optimizer/service/rules/solver.xml");
+        SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/solver.xml");
 
         solver = solverFactory.buildSolver();
         solver.addEventListener(new SolverEventListener() {
@@ -53,21 +153,42 @@ public class ClusterOptimizer implements Runnable {
                     return;
                 }
 
-                synchronized (ClusterOptimizer.this) {
-                    bestSolution = (OptimalDistributionSolution)bestSolutionChangedEvent.getNewBestSolution();
+                if(!bestSolutionChangedEvent.isNewBestSolutionInitialized()) {
+                    log.debug("Ignoring uninitialized solution");
+                    return;
                 }
-                log.info(String.format("New solution for %s available (score %s)",
-                        clusterId, bestSolution.getScore().toString()));
+
+                synchronized (ClusterOptimizer.this) {
+                    bestSolution = (OptimalDistributionStepsSolution)bestSolutionChangedEvent.getNewBestSolution();
+                    log.info(String.format("New solution for %s available (score %s)",
+                            clusterId, bestSolution.getScore().toString()));
+
+                    if (log.isDebugEnabled()) {
+                        recomputeScoreUsingScoreDirector(solver, bestSolution);
+                    }
+                }
             }
         });
 
         // Create new solution space
-        bestSolution = new OptimalDistributionSolution();
+        bestSolution = new OptimalDistributionStepsSolution();
         bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setVms(new HashSet<VmAssignment>());
+        bestSolution.setVms(new HashSet<VM>());
         bestSolution.setOtherFacts(new HashSet<Object>());
 
-        solver.setPlanningProblem(bestSolution);
+        // Prepare the step placeholders
+        List<Migration> migrationSteps = new ArrayList<>();
+        for (int i = 0; i < MAX_STEPS; i++) {
+            migrationSteps.add(new Migration());
+        }
+        bestSolution.setSteps(migrationSteps);
+        bestSolution.establishStepOrdering();
+
+        ClusterSituation previous = bestSolution;
+        for (Migration m: migrationSteps) {
+            m.recomputeSituationAfter(previous);
+            previous = m;
+        }
 
         // Configure updater so we can pass information to the solution space
         updater = new ClusterInfoUpdater(client, clusterId, new ClusterInfoUpdater.ClusterUpdateAvailable() {
@@ -76,6 +197,31 @@ public class ClusterOptimizer implements Runnable {
                 solver.addProblemFactChange(new ClusterFactChange(vms, hosts, facts));
             }
         });
+    }
+
+    /**
+     * Recompute solution's score and log all rules that affected it (in debug mode)
+     * This method uses new score director from the passed solver
+     * @param solver
+     * @param solution
+     */
+    private void recomputeScoreUsingScoreDirector(Solver solver, OptimalDistributionStepsSolution solution) {
+        ScoreDirector director = solver.getScoreDirectorFactory().buildScoreDirector();
+        director.setWorkingSolution(solution);
+        director.calculateScore();
+        for (ConstraintMatchTotal constraintMatchTotal : director.getConstraintMatchTotals()) {
+            String constraintName = constraintMatchTotal.getConstraintName();
+            Number weightTotal = constraintMatchTotal.getWeightTotalAsNumber();
+            for (ConstraintMatch constraintMatch : constraintMatchTotal.getConstraintMatchSet()) {
+                List<Object> justificationList = constraintMatch.getJustificationList();
+                Number weight = constraintMatch.getWeightAsNumber();
+                log.debug("Constraint match {} with weight {}", constraintMatch, weight);
+                for (Object item: justificationList) {
+                    log.debug("Justified by {}", item);
+                }
+            }
+        }
+        log.debug("Final score {}", bestSolution.getScore().toString());
     }
 
     /**
@@ -96,7 +242,7 @@ public class ClusterOptimizer implements Runnable {
         @Override
         public void doChange(ScoreDirector scoreDirector) {
             log.info(String.format("Updating facts for cluster %s", clusterId));
-            OptimalDistributionSolution space = (OptimalDistributionSolution) scoreDirector.getWorkingSolution();
+            OptimalDistributionStepsSolution space = (OptimalDistributionStepsSolution) scoreDirector.getWorkingSolution();
 
             // Create a mapping between hostId and new Host information
             Map<String, Host> hostMap = new HashMap<>();
@@ -110,29 +256,14 @@ public class ClusterOptimizer implements Runnable {
                 vmMap.put(vm.getId(), vm);
             }
 
-            // Remove missing VMs from the solution
-            Set<String> remainingVmIds = new HashSet<>();
-            for (Iterator<VmAssignment> it = space.getVms().iterator(); it.hasNext(); ) {
-                VmAssignment assignment = it.next();
-                if (!vmMap.containsKey(assignment.getId())) {
-                    scoreDirector.beforeEntityRemoved(assignment);
-                    it.remove();
-                    scoreDirector.afterEntityRemoved(assignment);
-
-                    // Remove the Vm from facts
-                    scoreDirector.beforeProblemFactRemoved(assignment.getVm());
-                    space.getRawVms().remove(assignment.getVm());
-                    scoreDirector.afterProblemFactRemoved(assignment.getVm());
-                } else {
-                    remainingVmIds.add(assignment.getId());
-                }
-            }
-
-            // Create new host fact set
+            // Create new host and vm fact set to not disturb other solutions
             space.setHosts(new HashSet<Host>(space.getHosts()));
+            space.setVms(new HashSet<VM>(space.getVms()));
+            space.setOtherFacts(new HashSet<Object>(space.getOtherFacts()));
 
             // Record which host fact instances need to be removed later
             Collection<Host> oldHosts = new ArrayList<>(space.getHosts());
+            Collection<VM> oldVMs = new ArrayList<>(space.getVms());
 
             // Add all hosts (new instances) to the facts
             for (Map.Entry<String, Host> h : hostMap.entrySet()) {
@@ -141,66 +272,58 @@ public class ClusterOptimizer implements Runnable {
                 scoreDirector.afterProblemFactAdded(h.getValue());
             }
 
-            // Update the solution with new host and vm data
-            for (VmAssignment assignment : space.getVms()) {
-                // Remove missing hosts from the VMs
-                if (!hostMap.containsKey(assignment.getHost().getId())) {
-                    scoreDirector.beforeVariableChanged(assignment, "hosts");
-                    assignment.setHost(null);
-                    scoreDirector.afterVariableChanged(assignment, "hosts");
-
-                    // and update the solution with new instances of Hosts
-                } else if (assignment.getHost() != null) {
-                    scoreDirector.beforeVariableChanged(assignment, "hosts");
-                    assignment.setHost(hostMap.get(assignment.getHost().getId()));
-                    scoreDirector.afterVariableChanged(assignment, "hosts");
-                }
-
-                // Replace the old VM instance with the updated VM instance
-                VM oldVm = assignment.getVm();
-                VM newVm = vmMap.get(assignment.getId());
-
-                // Add new VM to facts
-                scoreDirector.beforeProblemFactAdded(newVm);
-                space.getRawVms().add(newVm);
-                scoreDirector.afterProblemFactAdded(newVm);
-
-                // Update the backend instances of VM
-                scoreDirector.beforeProblemFactChanged(assignment);
-                assignment.setVm(newVm);
-                scoreDirector.afterProblemFactChanged(assignment);
-
-                // Remove old VM from facts
-                scoreDirector.beforeProblemFactRemoved(oldVm);
-                space.getRawVms().remove(oldVm);
-                scoreDirector.afterProblemFactRemoved(oldVm);
+            // Add all VMs (new instances) to the facts
+            for (Map.Entry<String, VM> h : vmMap.entrySet()) {
+                scoreDirector.beforeProblemFactAdded(h.getValue());
+                space.getVms().add(h.getValue());
+                scoreDirector.afterProblemFactAdded(h.getValue());
             }
 
-            // Delete old hosts from the facts
+            // Update the solution with new host and vm data
+            for (Migration step: space.getSteps()) {
+                // Remove missing hosts from the migrations
+                if (step.getDestination() == null) {
+                    // nothing needed
+                } else if (!hostMap.containsKey(step.getDestination().getId())) {
+                    scoreDirector.beforeVariableChanged(step, "destination");
+                    step.setDestination(null);
+                    scoreDirector.afterVariableChanged(step, "destination");
+
+                    // and update the solution with new instances of Hosts
+                } else {
+                    scoreDirector.beforeVariableChanged(step, "destination");
+                    step.setDestination(hostMap.get(step.getDestination().getId()));
+                    scoreDirector.afterVariableChanged(step, "destination");
+                }
+
+                // Remove missing VMs from the migrations
+                if (step.getVm() == null) {
+                    // nothing needed
+                } else if (!hostMap.containsKey(step.getVm().getId())) {
+                    scoreDirector.beforeVariableChanged(step, "vm");
+                    step.setVm(null);
+                    scoreDirector.afterVariableChanged(step, "vm");
+
+                    // and update the solution with new instances of VMs
+                } else {
+                    scoreDirector.beforeVariableChanged(step, "vm");
+                    step.setVm(vmMap.get(step.getVm().getId()));
+                    scoreDirector.afterVariableChanged(step, "vm");
+                }
+            }
+
+            // Delete old hosts and vms from the facts
             for (Host h : oldHosts) {
                 scoreDirector.beforeProblemFactRemoved(h);
                 space.getHosts().remove(h);
                 scoreDirector.afterProblemFactRemoved(h);
             }
-
-            // Find new VMs and insert them
-            Set<String> newVmIds = new HashSet<>(vmMap.keySet());
-            newVmIds.removeAll(remainingVmIds);
-            for (String vmId : newVmIds) {
-                // Add new raw Vm to facts
-                VM newVm = vmMap.get(vmId);
-                scoreDirector.beforeProblemFactAdded(newVm);
-                space.getRawVms().add(newVm);
-                scoreDirector.afterProblemFactAdded(newVm);
-
-                // Create new VM to Host assignment with empty host
-                VmAssignment newAssignment = new VmAssignment(newVm);
-                newAssignment.setHost(newAssignment.getVm().getHost());
-                scoreDirector.beforeEntityAdded(newAssignment);
-                space.getVms().add(newAssignment);
-                scoreDirector.afterEntityAdded(newAssignment);
+            for (VM vm : oldVMs) {
+                scoreDirector.beforeProblemFactRemoved(vm);
+                space.getVms().remove(vm);
+                scoreDirector.afterProblemFactRemoved(vm);
             }
-
+            
             // Remove old helper facts (Networks, PolicyUnits and other data)
             for (Iterator<Object> it = space.getOtherFacts().iterator(); it.hasNext(); ) {
                 Object fact = it.next();
@@ -215,6 +338,13 @@ public class ClusterOptimizer implements Runnable {
                 space.getOtherFacts().add(fact);
                 scoreDirector.afterProblemFactAdded(fact);
             }
+
+            /* Recompute the caches in Migration steps
+            ClusterSituation situation = space;
+            for (Migration step: space.getSteps()) {
+                step.recomputeSituationAfter(situation);
+                situation = step;
+            }*/
         }
     }
 
@@ -224,14 +354,14 @@ public class ClusterOptimizer implements Runnable {
 
     void solve() {
         log.info(String.format("Solver for %s starting", clusterId));
-        solver.solve();
+        solver.solve(bestSolution);
         log.info(String.format("Solver for %s finished", clusterId));
         synchronized (this) {
-            bestSolution = (OptimalDistributionSolution) solver.getBestSolution();
+            bestSolution = (OptimalDistributionStepsSolution) solver.getBestSolution();
         }
     }
 
-    public OptimalDistributionSolution getBestSolution() {
+    public OptimalDistributionStepsSolution getBestSolution() {
         synchronized (this) {
             return bestSolution;
         }

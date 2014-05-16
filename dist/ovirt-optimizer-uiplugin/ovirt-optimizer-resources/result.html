@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html ng-app="resultPage">
 <head>
     <script type='text/javascript'>
         function refreshPage()
@@ -7,25 +7,116 @@
             window.location.reload(true);
         }
     </script>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
+    <script src="ovirtsdk.js"></script>
+
+    <!-- Compatibility hacks
+     according to https://docs.angularjs.org/guide/ie //-->
+    <!--[if lte IE 7]>
+    <script src="http://cdnjs.cloudflare.com/ajax/libs/json2/20130526/json2.min.js"></script>
+    <![endif]-->
+    <!--[if lte IE 8]>
+    <script>
+        document.createElement('ng-include');
+        document.createElement('ng-pluralize');
+        document.createElement('ng-view');
+
+        // Optionally these for CSS
+        document.createElement('ng:include');
+        document.createElement('ng:pluralize');
+        document.createElement('ng:view');
+    </script>
+    <![endif]-->
+    <style>
+        .host { font-weight: bold; }
+    </style>
 </head>
 <body>
-<div id="ovirtoptimizerresult">No result received yet.</div>
-<script type='text/javascript'>
+
+<div ng-controller="resultController">
+
+    <p>Raw data: {{ result }}</p>
+    <p>Verification data: {{ verification }}</p>
+    <p>Status: {{ valid }}</p>
+
+    <h2>Migration steps</h2>
+    <table>
+        <tbody ng-repeat="step in result.migrations">
+        <tr ng-repeat="(vm, host) in step">
+            <td>{{ vm }} &ndash;&gt; {{ host }}</td>
+            <td>[migrate to {{ host }}]</td>
+        </tr>
+        </tbody>
+    </table>
+
+    <h2>Desired state</h2>
+    <table>
+        <tbody ng-repeat="(host, vms) in result.hostToVms">
+        <tr class="host">
+            <td>{{ host }}</td>
+            <td>load</td>
+            <td></td>
+        </tr>
+        <tr class="vm" ng-repeat="vm in vms">
+            <td>{{ vm }}</td>
+            <td>load</td>
+            <td ng-if="result.vmToHost[vm] != result.currentVmToHost[vm]">[migrate from {{ result.currentVmToHost[vm] }}]</td>
+            <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
+        </tr>
+        </tbody>
+    </table>
+</div>
+
+<script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.min.js"></script>
+<script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.route.js"></script>
+<script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.resource.js"></script>
+<script language="javascript">
     var api = parent.pluginApi('oVirtOptimizer');
     var cfg = api.configObject();
     var clusterid = window.location.href.split("#")[1];
+    var resultPage = angular.module('resultPage', []);
 
-    var xmlHttp = new XMLHttpRequest();
-    xmlHttp.onreadystatechange=function() {
-        if (xmlHttp.readyState==4
-                && xmlHttp.status==200) {
-            console.log(xmlHttp.responseText);
-            document.getElementById("ovirtoptimizerresult").innerHTML=xmlHttp.responseText;
-        }
-    };
-    xmlHttp.open("GET", cfg["baseurl"]+clusterid);
-    xmlHttp.send();
-    setTimeout(refreshPage, 30000);
+    resultPage.controller("resultController", function($scope, $timeout, resultFactory, verificationFactory) {
+        $scope.result = {};
+        $scope.verification = {};
+        $scope.valid = "Waiting for data...";
+
+        $scope.refreshData = function() {
+            resultFactory.getResult().success(function (data) {
+                $scope.result = data;
+                $scope.valid = "Data received";
+                $timeout($scope.verifyData, 30000);
+            });
+        };
+
+        $scope.verifyData = function() {
+            verificationFactory.getResult($scope.result).success(function (data) {
+                $timeout($scope.verifyData, 30000);
+                $scope.verification = data;
+                if (data.hardScore < 0) {
+                    $scope.valid = "Invalid data!";
+                }
+            });
+        };
+
+        $scope.refreshData();
+    });
+
+    resultPage.factory('resultFactory', function ($http) {
+        var factory = {};
+        factory.getResult = function() {
+            return $http.get(cfg["baseurl"]+clusterid);
+        };
+        return factory;
+    });
+
+    resultPage.factory('verificationFactory', function ($http) {
+        var factory = {};
+        factory.getResult = function(data) {
+            return $http.post(cfg["baseurl"]+clusterid+"/score", data);
+        };
+        return factory;
+    });
 </script>
 </body>
 </html>

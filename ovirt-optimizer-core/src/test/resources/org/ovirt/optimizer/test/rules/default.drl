@@ -1,0 +1,27 @@
+package org.ovirt.optimizer.service;
+dialect  "java"
+
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScoreHolder;
+import org.ovirt.optimizer.service.problemspace.Migration;
+import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.VM;
+
+// This rule slightly prioritizes solutions with less migrations
+// it should be the tie breaker when more good solutions are available
+global HardSoftScoreHolder scoreHolder;
+
+// Check whether host has enough memory to hold just the guaranteed
+// memory for all the VMs
+rule "notEnoughGuaranteedMemory"
+    when
+        $step: Migration(destination != null, vm != null)
+        $host: Host($memory: memory)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredMemory : memoryPolicy.guaranteed),
+                sum($requiredMemory)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end

@@ -1,13 +1,15 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.log4j.Logger;
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.optimizer.common.Result;
-import org.ovirt.optimizer.service.problemspace.OptimalDistributionSolution;
-import org.ovirt.optimizer.service.problemspace.VmAssignment;
+import org.ovirt.optimizer.common.ScoreResult;
+import org.ovirt.optimizer.service.problemspace.Migration;
+import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
 import org.ovirt.optimizer.util.Autoload;
 import org.ovirt.optimizer.util.SchedulerService;
 import org.quartz.JobDetail;
+import org.slf4j.Logger;
 
 import javax.annotation.ManagedBean;
 import javax.annotation.PostConstruct;
@@ -17,6 +19,7 @@ import javax.inject.Inject;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -153,6 +156,26 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     }
 
     @Override
+    public ScoreResult recomputeScore(String cluster, Result oldResult) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return null;
+        }
+
+        ScoreResult scoreResult = new ScoreResult();
+        HardSoftScore score = clusterOptimizer.computeScore(oldResult.getMigrations());
+        scoreResult.setHardScore(score.getHardScore());
+        scoreResult.setSoftScore(score.getSoftScore());
+        return scoreResult;
+    }
+
+    @Override
     public Result getCurrentResult(String cluster) {
         ClusterOptimizer clusterOptimizer;
         Result r = new Result();
@@ -164,25 +187,39 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
-            r.setHostToVms(new HashMap<String, ArrayList<String>>());
+            r.setHostToVms(new HashMap<String, Set<String>>());
             r.setVmToHost(new HashMap<String, String>());
+            r.setMigrations(new ArrayList<Map<String, String>>());
+            r.setCurrentVmToHost(new HashMap<String, String>());
+            r.setHosts(new HashSet<String>());
+            r.setHardScore(0);
+            r.setSoftScore(0);
         }
         else {
-            Map<String, ArrayList<String>> hostToVms = new HashMap<>();
-            Map<String, String> vmToHost = new HashMap<>();
+            OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
 
-            OptimalDistributionSolution best = clusterOptimizer.getBestSolution();
+            r.setHardScore(best.getScore().getHardScore());
+            r.setSoftScore(best.getScore().getSoftScore());
+
             r.setHosts(new HashSet<String>());
-            for (Host host: best.getHosts()) {
-                hostToVms.put(host.getId(), new ArrayList<String>());
-                r.getHosts().add(host.getId());
+            for (Host h: best.getHosts()) {
+                r.getHosts().add(h.getId());
             }
-            for (VmAssignment vm: best.getVms()) {
-                hostToVms.get(vm.getHost().getId()).add(vm.getVm().getId());
-                vmToHost.put(vm.getId(), vm.getHost().getId());
+
+            r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());
+            r.setVmToHost(best.getFinalSituation().getVmToHostAssignments());
+            r.setCurrentVmToHost(best.getVmToHostAssignments());
+
+            List<Map<String, String>> migrations = new ArrayList<>();
+            for (Migration step: best.getSteps()) {
+                if (step.getVm() == null || step.getDestination() == null) {
+                    continue;
+                }
+                Map<String, String> migration = new HashMap<>();
+                migration.put(step.getVm().getId(), step.getDestination().getId());
+                migrations.add(migration);
             }
-            r.setHostToVms(hostToVms);
-            r.setVmToHost(vmToHost);
+            r.setMigrations(migrations);
         }
 
         return r;

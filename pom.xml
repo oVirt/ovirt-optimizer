@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.ovirt.optimizer</groupId>
-    <version>${project.version}</version>
+    <version>0.1</version>
     <name>oVirt optimizer service</name>
     <description>
         This service runs optimization algorithms to determine the optimal
@@ -17,9 +17,15 @@
     </description>
     <packaging>pom</packaging>
 
-    <properties>
-        <project.version>0.1</project.version>
+    <dependencies>
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>slf4j-api</artifactId>
+            <version>1.7.7</version>
+        </dependency>
+    </dependencies>
 
+    <properties>
         <!-- Explicitly declaring the source encoding eliminates the following
             message: -->
         <!-- [WARNING] Using platform encoding (UTF-8 actually) to copy filtered

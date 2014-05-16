@@ -1,9 +1,10 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.log4j.Logger;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.annotation.ManagedBean;
 import java.io.FileReader;
@@ -32,7 +33,7 @@ public class OvirtClient {
     public static final String SDK_PASSWORD = "org.ovirt.optimizer.sdk.password";
     public static final String SDK_CA_STORE = "org.ovirt.optimizer.sdk.ca.store";
 
-    static private Logger log = Logger.getLogger(OvirtClient.class);
+    static private Logger log = LoggerFactory.getLogger(OvirtClient.class);
 
     String server;
     String port;
@@ -59,7 +60,7 @@ public class OvirtClient {
         try {
             config.load(new FileReader(configFile));
         } catch (IOException ex) {
-            log.error(ex);
+            log.error("Connection to oVirt REST server failed", ex);
         }
 
         this.server = config.getProperty(SDK_SERVER);

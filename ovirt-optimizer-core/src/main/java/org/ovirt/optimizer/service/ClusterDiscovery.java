@@ -1,6 +1,6 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.entities.Cluster;
 import org.ovirt.engine.sdk.exceptions.ServerException;
@@ -40,13 +40,13 @@ public class ClusterDiscovery {
                 clusters.add(cluster.getId());
             }
         } catch (IOException ex) {
-            log.error(ex);
+            log.error("Cluster discovery failed", ex);
             return null;
         } catch (ServerException ex) {
-            log.error(ex);
+            log.error("Cluster discovery failed", ex);
             return null;
         } catch (UnsecuredConnectionAttemptError ex) {
-            log.error(ex);
+            log.error("Cluster discovery failed", ex);
             return null;
         }
 

@@ -1,32 +1,65 @@
 package org.ovirt.optimizer.service;
 dialect  "java"
 
+import java.util.ArrayList;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScoreHolder;
-import org.ovirt.optimizer.service.problemspace.VmAssignment;
+import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.engine.sdk.entities.Network;
+import org.ovirt.optimizer.util.RuleLogger;
 
-import org.ovirt.optimizer.service.problemspace.VmAssignment;
-
-// This rule slightly prioritizes solutions with less migrations
-// it should be the tie breaker when more good solutions are available
 global HardSoftScoreHolder scoreHolder;
 
-rule "migrationNotNeeded"
-    when VmAssignment(host == vm.host)
-    then scoreHolder.addSoftConstraintMatch(kcontext, 1);
+/*
+Here are two templates for hard and soft constraint rules. Use them as the base for writing new
+rules.
+
+Make sure you use "id" property of all structures when checking for presence, match or membership
+as the data source does sometimes return the same object as two different instances (with the same id).
+
+rule "hardScoreTemplate"
+    when
+        // Remove the destination var if the move can violate hard constraints on the source host
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $host: Host($memory: memory, $step.finalStep == true || id == $destination.id)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredMemory : memoryPolicy.guaranteed),
+                sum($requiredMemory)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
 end
 
+rule "softScoreTemplate"
+    when
+        $finalStep: Migration(finalStep == true)
+        $host: Host($memory: memory)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+                $vm : VM($vmId : id,
+                         $finalStep.getAssignment($vmId) == $host.id,
+                         $requiredMemory : memoryPolicy.guaranteed),
+                sum($requiredMemory)
+        )
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end
+*/
+
+// TODO MemoryPolicyUnit
 // Check whether host has enough memory to hold just the guaranteed
 // memory for all the VMs
 rule "notEnoughGuaranteedMemory"
     when
-        $host : Host($memory : memory)
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
+        $host: Host($memory: maxSchedulingMemory, $step.finalStep == true || id == $destination.id)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-            VmAssignment(
-                host == $host,
-                $requiredMemory : vm.memoryPolicy.guaranteed),
-            sum($requiredMemory)
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredMemory : memoryPolicy.guaranteed),
+                sum($requiredMemory)
         )
     then
         scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
@@ -36,13 +69,138 @@ end
 // taking overcommitment into account
 rule "notEnoughMemory"
     when
-        $host : Host($memory : memory * cluster.memoryPolicy.overCommit.percent)
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
+        $host: Host($step.finalStep == true || id == $destination.id, $memory: maxSchedulingMemory + maxSchedulingMemory * cluster.memoryPolicy.overCommit.percent)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-            VmAssignment(
-                host == $host,
-                $requiredMemory : vm.memory),
-            sum($requiredMemory)
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredMemory : memory),
+                sum($requiredMemory)
         )
     then
         scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end
+
+// CpuLevelFilterPolicyUnit
+
+/* Compare the number of cores
+// TODO enable only one of the following two rules based on the Count Threads as cores setting
+rule "notEnoughCores"
+    when
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $host: Host($step.finalStep == true || id == $destination.id, $cores: cpu.topology.cores)
+        $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredCpus : cpu.topology.cores),
+                sum($requiredCpus)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpuCoresTotal.intValue());
+end
+
+rule "notEnoughThreads"
+    when
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $host: Host($step.finalStep == true || id == $destination.id, $cores: cpu.topology.threads)
+        $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
+                $vm : VM($vmId : id,
+                         $step.getAssignment($vmId) == $host.id,
+                         $requiredCpus : cpu.topology.cores),
+                sum($requiredCpus)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpuCoresTotal.intValue());
+end
+*/
+
+// TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionBalancePolicyUnit
+// TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionWeightPolicyUnit
+// TODO org.ovirt.engine.core.bll.scheduling.policyunits.HostedEngineHAClusterFilterPolicyUnit
+// TODO HostedEngineHAClusterWeightPolicyUnit
+
+// TODO NetworkPolicyUnit
+rule "checkRequiredDisplayNetworks"
+    when
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $host: Host($step.finalStep == true || id == $destination.id)
+        $vm: VM($vmId : id,
+           $step.getAssignment($vmId) == $host.id)
+        ArrayList(size == 0) from collect(
+           Network(dataCenter.id == $host.cluster.dataCenter.id,
+                   display == true)
+        )
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -1);
+
+end
+
+// TODO MigrationPolicyUnit
+// TODO PinToHostPolicyUnit
+rule "pinToHost"
+    when
+        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $host: Host($step.finalStep == true || id == $destination.id)
+        $vm : VM($vmId : id,
+                 $step.getAssignment($vmId) == $host.id,
+                 placementPolicy.host != $host,
+                 placementPolicy.affinity != "migratable")
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -1);
+end
+
+// TODO PowerSavingBalancePolicyUnit
+// TODO PowerSavingWeightPolicyUnit
+
+// Test rules
+
+// This rule slightly prioritizes solutions with less migrations
+// it should be the tie breaker when more good solutions are available
+rule "migrationSteps"
+    when
+        Migration(destination != null, vm != null)
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -1);
+end
+
+/* Debug rule
+rule "migrationStepsAvailable"
+    when
+        Migration()
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, 1);
+end
+
+rule "vmsAvailable"
+    when
+        $finalStep: Migration(finalStep == true)
+        VM($vm: id)
+        Host($host: id,
+             $finalStep.getAssignment($vm) == $host)
+    then
+        RuleLogger.info(kcontext, "VM {} runs at host {}", $vm, $host);
+        scoreHolder.addSoftConstraintMatch(kcontext, 1);
+end */
+
+// Balanced memory proof of concept
+rule "balancedMemory"
+    when
+        $finalStep: Migration(finalStep == true)
+        Host($id1 : id)
+        Host($id2 : id, $id1 != $id2)
+        $requiredMemoryTotal1 : Number() from accumulate(
+                VM($vmId1 : id,
+                   $finalStep.getAssignment($vmId1) == $id1,
+                   $requiredMemory : memoryPolicy.guaranteed),
+                sum($requiredMemory)
+        )
+        $requiredMemoryTotal2 : Number() from accumulate(
+                VM($vmId2 : id,
+                   $finalStep.getAssignment($vmId2) == $id2,
+                   $requiredMemory2 : memoryPolicy.guaranteed),
+                sum($requiredMemory2)
+        )
+    then
+        //RuleLogger.info(kcontext, "Host1: {} mem {} vs. Host2: {} mem {} score {}", $id1, $requiredMemoryTotal1.longValue(), $id2, $requiredMemoryTotal2.longValue(), (int)(-Math.abs($requiredMemoryTotal1.longValue() - $requiredMemoryTotal2.longValue())/(1024*1024)));
+        scoreHolder.addSoftConstraintMatch(kcontext, (int)(-(Math.abs($requiredMemoryTotal1.longValue() - $requiredMemoryTotal2.longValue())/(1024*1024))));
 end

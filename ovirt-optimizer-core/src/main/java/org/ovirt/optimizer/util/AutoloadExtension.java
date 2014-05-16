@@ -1,6 +1,6 @@
 package org.ovirt.optimizer.util;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
@@ -20,7 +20,7 @@ import java.util.Set;
  * Based on http://ovaraksin.blogspot.nl/2013/02/eager-cdi-beans.html
  */
 public class AutoloadExtension implements Extension {
-    private final Logger log = Logger.getLogger(AutoloadExtension.class);
+    private final Logger log = org.slf4j.LoggerFactory.getLogger(AutoloadExtension.class);
 
     private Set<Bean<?>> autoloadBeanList = new HashSet<Bean<?>>();
     private Set<Bean<?>> loaded = new HashSet<Bean<?>>();

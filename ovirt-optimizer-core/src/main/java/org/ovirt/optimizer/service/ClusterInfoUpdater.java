@@ -1,23 +1,27 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.log4j.Logger;
 import org.ovirt.engine.sdk.Api;
+import org.ovirt.engine.sdk.decorators.Cluster;
+import org.ovirt.engine.sdk.entities.DataCenter;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * This class implements a thread that monitors a cluster for
  * fact changes (new or missing VMs or hosts)
  */
 public class ClusterInfoUpdater implements Runnable {
-    private static Logger log = Logger.getLogger(ClusterInfoUpdater.class);
+    private static Logger log = LoggerFactory.getLogger(ClusterInfoUpdater.class);
 
     public interface ClusterUpdateAvailable {
         void checkUpdate(Set<VM> vms, Set<Host> hosts, Set<Object> newFacts);
@@ -50,11 +54,18 @@ public class ClusterInfoUpdater implements Runnable {
             try {
                 Api engine = ovirtClient.connect();
 
+                Cluster clusterInstance = engine.getClusters().get(UUID.fromString(clusterId));
+                DataCenter dataCenter = clusterInstance.getDataCenter();
+
                 for (Host host: engine.getHosts().list()) {
                     if (host.getCluster().getId().equals(clusterId)) {
                         log.debug(String.format("Discovered host %s (%s) on cluster %s with state %s",
                                 host.getName(), host.getId(), clusterId, host.getStatus().getState()));
                         if (host.getStatus().getState().equals("up")) {
+                            /* Reconstruct references to other structures */
+                            host.getCluster().setDataCenter(dataCenter);
+
+                            /* Add the host to fact database */
                             hosts.add(host);
                             hostIds.add(host.getId());
                         }
@@ -72,22 +83,22 @@ public class ClusterInfoUpdater implements Runnable {
                 }
 
                 for (Network network: engine.getNetworks().list()) {
-                    if (network.getCluster() != null
-                            && network.getCluster().getId().equals(clusterId)) {
-                        log.debug(String.format("Discovered Network %s (%s) on cluster %s",
-                                network.getName(), network.getId(), clusterId));
+                    if (network.getDataCenter() != null
+                            && network.getDataCenter().getId().equals(clusterInstance.getDataCenter().getId())) {
+                        log.debug(String.format("Discovered Network %s (%s) on cluster %s [datacenter %s]",
+                                network.getName(), network.getId(), clusterInstance.getId(), dataCenter.getId()));
                         facts.add(network);
                     }
                 }
 
             } catch (IOException ex) {
-                log.error(ex);
+                log.error("Cluster update failed", ex);
                 continue;
             } catch (ServerException ex) {
-                log.error(ex);
+                log.error("Cluster update failed", ex);
                 continue;
             } catch (UnsecuredConnectionAttemptError ex) {
-                log.error(ex);
+                log.error("Cluster update failed", ex);
                 continue;
             }
 

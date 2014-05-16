@@ -1,6 +1,6 @@
 package org.ovirt.optimizer.util;
 
-import org.apache.log4j.Logger;
+import org.slf4j.Logger;
 
 import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.spi.InjectionPoint;
@@ -25,6 +25,6 @@ public class LoggerFactory {
     @Produces
     public Logger createLogger(InjectionPoint injectionPoint) {
         Class<?> cls = injectionPoint.getMember().getDeclaringClass();
-        return Logger.getLogger(cls);
+        return org.slf4j.LoggerFactory.getLogger(cls);
     }
 }

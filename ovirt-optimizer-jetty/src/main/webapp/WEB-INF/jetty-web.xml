@@ -5,4 +5,5 @@
             <Item>-org.eclipse.jetty.servlet.ServletContextHandler.Decorator</Item>
         </Array>
     </Set>
+    <Call name="prependServerClass"><Arg>-org.eclipse.jetty.servlet.</Arg></Call>
 </Configure>

@@ -2,25 +2,29 @@ package org.ovirt.optimizer.common;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
-import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 @XmlRootElement
 public class Result implements Serializable {
-    Map<String, ArrayList<String>> hostToVms;
+    Map<String, Set<String>> hostToVms;
     Map<String, String> vmToHost;
+    Map<String, String> currentVmToHost;
+    List<Map<String, String>> migrations;
     Set<String> hosts;
     String cluster;
+    int softScore;
+    int hardScore;
 
     public Result() {
     }
 
-    public Map<String,ArrayList<String>> getHostToVms() {
+    public Map<String, Set<String>> getHostToVms() {
         return hostToVms;
     }
 
-    public void setHostToVms(Map<String, ArrayList<String>> hostToVms) {
+    public void setHostToVms(Map<String, Set<String>> hostToVms) {
         this.hostToVms = hostToVms;
     }
 
@@ -46,5 +50,37 @@ public class Result implements Serializable {
 
     public void setVmToHost(Map<String, String> vmToHost) {
         this.vmToHost = vmToHost;
+    }
+
+    public List<Map<String, String>> getMigrations() {
+        return migrations;
+    }
+
+    public void setMigrations(List<Map<String, String>> migrations) {
+        this.migrations = migrations;
+    }
+
+    public Map<String, String> getCurrentVmToHost() {
+        return currentVmToHost;
+    }
+
+    public void setCurrentVmToHost(Map<String, String> currentVmToHost) {
+        this.currentVmToHost = currentVmToHost;
+    }
+
+    public int getSoftScore() {
+        return softScore;
+    }
+
+    public void setSoftScore(int softScore) {
+        this.softScore = softScore;
+    }
+
+    public int getHardScore() {
+        return hardScore;
+    }
+
+    public void setHardScore(int hardScore) {
+        this.hardScore = hardScore;
     }
 }
