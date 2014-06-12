@@ -3,8 +3,12 @@
 %global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %global jetty_deployments %{_datadir}/jetty/webapps
 
+# The version macro to be redefined by Jenkins build when needed
+%define project_version 0.1
+%{!?_version: %define _version %{project_version}}
+
 Name:		ovirt-optimizer
-Version:	0.1
+Version:	%{_version}
 Release:	1%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
