@@ -19,7 +19,6 @@ BuildRequires:	jpackage-utils
 BuildRequires:	maven-local
 BuildRequires:  maven-war-plugin
 BuildRequires:  maven-jar-plugin
-BuildRequires:  maven-ejb-plugin
 BuildRequires:	unzip
 
 Requires:	java >= 1:1.7.0

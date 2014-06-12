@@ -48,8 +48,6 @@
             <version>${version.org.jboss.spec.jboss.javaee.6.0}</version>
             <scope>provided</scope>
         </dependency>
-        <!-- Import the EJB 3.1 API, we use provided scope as the API is included
-             in JBoss AS 7 -->
         <dependency>
             <groupId>javax.enterprise</groupId>
             <artifactId>cdi-api</artifactId>
@@ -72,19 +70,4 @@
             <version>2.2.0</version>
         </dependency>
     </dependencies>
-
-    <build>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-ejb-plugin</artifactId>
-                <version>${version.ejb.plugin}</version>
-                <configuration>
-                    <ejbVersion>3.1</ejbVersion>
-                    <!-- this is false by default -->
-                    <generateClient>true</generateClient>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>
