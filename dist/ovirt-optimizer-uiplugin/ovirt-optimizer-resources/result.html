@@ -45,6 +45,9 @@
 
     <p>Status: {{ valid }}</p>
 
+    <button ng-click="frozen=true">Freeze solution</button>
+    <button ng-click="frozen=false">Unfreeze solution</button>
+
     <h2>Migration steps</h2>
     <table>
         <tbody ng-repeat="step in result.migrations">
