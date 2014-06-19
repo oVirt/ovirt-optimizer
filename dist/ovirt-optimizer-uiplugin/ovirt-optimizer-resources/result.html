@@ -106,8 +106,8 @@
                 url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/migrate",
                 headers: {"Content-Type": "application/json",
                           "Accept": "application/json"},
-                data: {action: {host: {id: host},
-                                async: true}}
+                data: {host: {id: host},
+                       async: true}
             }).success(function (data) {
 
             });
