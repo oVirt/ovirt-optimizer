@@ -13,6 +13,7 @@ public class Result implements Serializable {
     Map<String, String> currentVmToHost;
     List<Map<String, String>> migrations;
     Set<String> hosts;
+    Set<String> vms;
     String cluster;
     int softScore;
     int hardScore;
@@ -82,5 +83,13 @@ public class Result implements Serializable {
 
     public void setHardScore(int hardScore) {
         this.hardScore = hardScore;
+    }
+
+    public Set<String> getVms() {
+        return vms;
+    }
+
+    public void setVms(Set<String> vms) {
+        this.vms = vms;
     }
 }

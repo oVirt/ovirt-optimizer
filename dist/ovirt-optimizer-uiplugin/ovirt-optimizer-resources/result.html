@@ -29,45 +29,56 @@
     <![endif]-->
     <style>
         .host { font-weight: bold; }
+        .ng-cloak, [ng-cloak].splash {
+            display: block !important;
+        }
+        .splash {
+            display: none !important;
+        }
     </style>
 </head>
 <body>
 
-<div ng-controller="resultController">
+<div class="splash">Loading..</div>
 
-    <p>Raw data: {{ result }}</p>
-    <p>Verification data: {{ verification }}</p>
+<div ng-cloak class="ng-cloak" ng-controller="resultController">
+
     <p>Status: {{ valid }}</p>
 
     <h2>Migration steps</h2>
     <table>
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
-            <td>{{ vm }} &ndash;&gt; {{ host }}</td>
-            <td>[migrate to {{ host }}]</td>
+            <td>{{ vms[vm].name }} &ndash;&gt; {{ hosts[host].name }}</td>
+            <td><button ng-click="migrate(vm, host)">migrate to {{ hosts[host].name }}</button></td>
         </tr>
         </tbody>
     </table>
 
     <h2>Desired state</h2>
     <table>
-        <tbody ng-repeat="(host, vms) in result.hostToVms">
+        <tbody ng-repeat="(host, rvms) in result.hostToVms">
         <tr class="host">
-            <td>{{ host }}</td>
-            <td>load</td>
+            <td>{{ hosts[host].name }}</td>
+            <td>{{ hosts[host].willusememory }} out of {{ hosts[host].memory }}</td>
             <td></td>
         </tr>
-        <tr class="vm" ng-repeat="vm in vms">
-            <td>{{ vm }}</td>
-            <td>load</td>
-            <td ng-if="result.vmToHost[vm] != result.currentVmToHost[vm]">[migrate from {{ result.currentVmToHost[vm] }}]</td>
+        <tr class="vm" ng-repeat="vm in rvms">
+            <td>{{ vms[vm].name }}</td>
+            <td>{{ vms[vm].memory_policy.guaranteed }} (max {{ vms[vm].memory }})</td>
+            <td ng-if="result.vmToHost[vm] != result.currentVmToHost[vm]"><button ng-click="migrate(vm, result.vmToHost[vm])">migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
         </tr>
         </tbody>
     </table>
+
+    <p>Raw data: {{ result }}</p>
+    <p>Raw vm data: {{ vms }}</p>
+    <p>Raw host data: {{ hosts }}</p>
+    <p>Verification data: {{ verification }}</p>
 </div>
 
-<script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.min.js"></script>
+<script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.js"></script>
 <script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.route.js"></script>
 <script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.resource.js"></script>
 <script language="javascript">
@@ -76,22 +87,90 @@
     var clusterid = window.location.href.split("#")[1];
     var resultPage = angular.module('resultPage', []);
 
-    resultPage.controller("resultController", function($scope, $timeout, resultFactory, verificationFactory) {
+    resultPage.controller("resultController", function($scope, $timeout, $http, resultFactory,
+                                                       verificationFactory, vmsFactory, hostsFactory) {
         $scope.result = {};
         $scope.verification = {};
         $scope.valid = "Waiting for data...";
+        $scope.frozen = false;
+        $scope.hosts = {};
+        $scope.vms = {};
+
+        $scope.migrate = function(vm, host) {
+            console.log("Initiating migration of vm "+vm+" to host "+host);
+            $http({
+                method: 'POST',
+                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/migrate",
+                headers: {"Content-Type": "application/json",
+                          "Accept": "application/json"},
+                data: {action: {host: {id: host},
+                                async: true}}
+            }).success(function (data) {
+
+            });
+        };
+
+        $scope.refresh = function() {
+            if ($scope.frozen) {
+                $scope.verifyData();
+            }
+            else {
+                $scope.refreshData();
+            }
+        };
 
         $scope.refreshData = function() {
             resultFactory.getResult().success(function (data) {
                 $scope.result = data;
                 $scope.valid = "Data received";
-                $timeout($scope.verifyData, 30000);
+                $timeout($scope.refresh, 30000);
+
+                /* initialize name cache */
+                data.hosts.forEach(function (host) {
+                    console.log("Checking cache for host "+host);
+                    if (!(host in $scope.hosts)) {
+                        console.log("Registering empty host "+host);
+                        $scope.hosts[host] = {
+                            name: host,
+                            memory: 0,
+                            willusememory: 0
+                        };
+                    }
+                });
+
+                data.vms.forEach(function (vm) {
+                    console.log("Checking cache for vm "+vm);
+                    if (!(vm in $scope.vms)) {
+                        console.log("Registering empty vm "+vm);
+                        $scope.vms[vm] = {
+                            name: vm,
+                            memory: 0,
+                            memory_policy: {
+                                guaranteed: 0
+                            }
+                        };
+                    }
+                });
+
+                $scope.recomputeResources();
             });
         };
 
+        $scope.recomputeResources = function() {
+            $scope.result.hosts.forEach(function (host) {
+                console.log("Resetting host "+host);
+                $scope.hosts[host].willusememory = 0;
+            });
+
+            $scope.result.vms.forEach(function (vm) {
+                console.log("Adding mem of vm "+vm+" to host "+$scope.result.vmToHost[vm]);
+                $scope.hosts[$scope.result.vmToHost[vm]].willusememory += $scope.vms[vm].memory;
+            });
+        }
+
         $scope.verifyData = function() {
             verificationFactory.getResult($scope.result).success(function (data) {
-                $timeout($scope.verifyData, 30000);
+                $timeout($scope.refresh, 30000);
                 $scope.verification = data;
                 if (data.hardScore < 0) {
                     $scope.valid = "Invalid data!";
@@ -99,7 +178,52 @@
             });
         };
 
-        $scope.refreshData();
+        $scope.refreshHostInfo = function() {
+            hostsFactory.getResult().success(function (data) {
+                data.host.forEach(function (host) {
+                    console.log("Updating host "+host.id);
+                    $scope.hosts[host.id] = host;
+                });
+                $scope.recomputeResources();
+                $timeout($scope.refreshHostInfo, 15000);
+            });
+        };
+
+        $scope.refreshVmInfo = function() {
+            vmsFactory.getResult().success(function (data) {
+                data.vm.forEach(function (vm) {
+                    console.log("Updating vm "+vm.id);
+                    $scope.vms[vm.id] = vm;
+                });
+                $scope.recomputeResources();
+                $timeout($scope.refreshVmInfo, 15000);
+            });
+        };
+
+        $scope.refresh();
+        $scope.refreshHostInfo();
+        $scope.refreshVmInfo();
+    });
+
+    resultPage.factory('hostsFactory', function ($http) {
+        var factory = {};
+        factory.getResult = function() {
+            console.log("http://"+window.parent.location.host + "/ovirt-engine/api/hosts");
+            return $http({method: 'GET',
+                url: "http://"+window.parent.location.host + "/ovirt-engine/api/hosts",
+                headers: {"Accept": "application/json"}});
+        };
+        return factory;
+    });
+
+    resultPage.factory('vmsFactory', function ($http) {
+        var factory = {};
+        factory.getResult = function() {
+            return $http({method: 'GET',
+                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms",
+                headers: {"Accept": "application/json"}});
+        };
+        return factory;
     });
 
     resultPage.factory('resultFactory', function ($http) {
