@@ -190,7 +190,8 @@ public class ClusterOptimizer implements Runnable {
         }
 
         // Configure updater so we can pass information to the solution space
-        updater = new ClusterInfoUpdater(client, clusterId, new ClusterInfoUpdater.ClusterUpdateAvailable() {
+        updater = new ClusterInfoUpdater(client, clusterId);
+        updater.addHandler(new ClusterInfoUpdater.ClusterUpdateAvailable() {
             @Override
             public void checkUpdate(final Set<VM> vms, final Set<Host> hosts, final Set<Object> facts) {
                 solver.addProblemFactChange(new ClusterFactChange(vms, hosts, facts));

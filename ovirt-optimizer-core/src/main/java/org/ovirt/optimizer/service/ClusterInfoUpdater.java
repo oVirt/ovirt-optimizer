@@ -28,13 +28,13 @@ public class ClusterInfoUpdater implements Runnable {
     }
 
     String clusterId;
-    ClusterUpdateAvailable handler;
+    Set<ClusterUpdateAvailable> handlers;
     volatile boolean running = true;
     OvirtClient ovirtClient;
 
-    public ClusterInfoUpdater(OvirtClient client, String clusterId, ClusterUpdateAvailable handler) {
+    public ClusterInfoUpdater(OvirtClient client, String clusterId) {
         this.clusterId = clusterId;
-        this.handler = handler;
+        this.handlers = new HashSet<>();
         this.ovirtClient = client;
     }
 
@@ -102,7 +102,15 @@ public class ClusterInfoUpdater implements Runnable {
                 continue;
             }
 
-            handler.checkUpdate(vms, hosts, facts);
+            Set<ClusterUpdateAvailable> currentHandlers = new HashSet<>();
+
+            synchronized (handlers) {
+                currentHandlers.addAll(handlers);
+            }
+
+            for (ClusterUpdateAvailable handler: currentHandlers) {
+                handler.checkUpdate(vms, hosts, facts);
+            }
 
             // Wait, but watch for terminate command
             try {
@@ -127,5 +135,15 @@ public class ClusterInfoUpdater implements Runnable {
         log.info(String.format("Updater thread for %s sent the termination command", clusterId));
     }
 
+    void addHandler(ClusterUpdateAvailable handler) {
+        synchronized (handlers) {
+            handlers.add(handler);
+        }
+    }
 
+    void removeHandler(ClusterUpdateAvailable handler) {
+        synchronized (handlers) {
+            handlers.remove(handler);
+        }
+    }
 }
