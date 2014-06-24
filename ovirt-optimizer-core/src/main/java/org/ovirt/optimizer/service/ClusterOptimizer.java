@@ -32,7 +32,6 @@ import java.util.Set;
  */
 public class ClusterOptimizer implements Runnable {
     private static Logger log = LoggerFactory.getLogger(ClusterOptimizer.class);
-    final static int MAX_STEPS = 10;
     final Solver solver;
     final String clusterId;
     private volatile OptimalDistributionStepsSolution bestSolution;
@@ -137,7 +136,7 @@ public class ClusterOptimizer implements Runnable {
         return solution.getScore();
     }
 
-    public ClusterOptimizer(OvirtClient client, final String clusterId, Finished finishedCallback) {
+    public ClusterOptimizer(OvirtClient client, final String clusterId, int maxSteps, Finished finishedCallback) {
         this.clusterId = clusterId;
         this.finishedCallback = finishedCallback;
 
@@ -178,7 +177,7 @@ public class ClusterOptimizer implements Runnable {
 
         // Prepare the step placeholders
         List<Migration> migrationSteps = new ArrayList<>();
-        for (int i = 0; i < MAX_STEPS; i++) {
+        for (int i = 0; i < maxSteps; i++) {
             migrationSteps.add(new Migration());
         }
         bestSolution.setSteps(migrationSteps);

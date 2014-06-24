@@ -8,6 +8,7 @@ import org.ovirt.optimizer.common.ScoreResult;
 import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
 import org.ovirt.optimizer.util.Autoload;
+import org.ovirt.optimizer.util.ConfigProvider;
 import org.ovirt.optimizer.util.SchedulerService;
 import org.quartz.JobDetail;
 import org.slf4j.Logger;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.Set;
 
 
@@ -86,10 +88,13 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             availableClusters.removeAll(clusterOptimizers.keySet());
         }
 
+        Properties config = new ConfigProvider().load().getConfig();
+        final int maxSteps = Integer.valueOf(config.getProperty(ConfigProvider.SOLVER_STEPS));
+
         for (String clusterId: availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
 
-            ClusterOptimizer planner = new ClusterOptimizer(client, clusterId, new ClusterOptimizer.Finished() {
+            ClusterOptimizer planner = new ClusterOptimizer(client, clusterId, maxSteps, new ClusterOptimizer.Finished() {
                 @Override
                 public void solvingFinished(ClusterOptimizer planner, Thread thread) {
                     threads.remove(thread);

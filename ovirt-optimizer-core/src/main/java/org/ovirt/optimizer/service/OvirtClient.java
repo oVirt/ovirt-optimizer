@@ -3,6 +3,7 @@ package org.ovirt.optimizer.service;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -27,11 +28,6 @@ import java.util.Properties;
  */
 @ManagedBean
 public class OvirtClient {
-    public static final String SDK_SERVER = "org.ovirt.optimizer.sdk.server";
-    public static final String SDK_PORT = "org.ovirt.optimizer.sdk.port";
-    public static final String SDK_USERNAME = "org.ovirt.optimizer.sdk.username";
-    public static final String SDK_PASSWORD = "org.ovirt.optimizer.sdk.password";
-    public static final String SDK_CA_STORE = "org.ovirt.optimizer.sdk.ca.store";
 
     static private Logger log = LoggerFactory.getLogger(OvirtClient.class);
 
@@ -44,30 +40,14 @@ public class OvirtClient {
     final Properties config;
 
     public OvirtClient() {
-        String configFile = System.getenv("OVIRT_OPTIMIZER_CONFIG");
-        if (configFile == null) {
-            configFile = "/etc/ovirt-optimizer/ovirt-optimizer.properties";
-        }
-
         /* Create config with default values */
-        config = new Properties();
-        config.setProperty(SDK_SERVER, "localhost");
-        config.setProperty(SDK_PORT, "8080");
-        config.setProperty(SDK_USERNAME, "admin@internal");
-        config.setProperty(SDK_PASSWORD, "letmein");
-        config.setProperty(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
+        config = new ConfigProvider().load().getConfig();
 
-        try {
-            config.load(new FileReader(configFile));
-        } catch (IOException ex) {
-            log.error("Connection to oVirt REST server failed", ex);
-        }
-
-        this.server = config.getProperty(SDK_SERVER);
-        this.port = config.getProperty(SDK_PORT);
-        this.username = config.getProperty(SDK_USERNAME);
-        this.password = config.getProperty(SDK_PASSWORD);
-        this.caStore = config.getProperty(SDK_CA_STORE);
+        this.server = config.getProperty(ConfigProvider.SDK_SERVER);
+        this.port = config.getProperty(ConfigProvider.SDK_PORT);
+        this.username = config.getProperty(ConfigProvider.SDK_USERNAME);
+        this.password = config.getProperty(ConfigProvider.SDK_PASSWORD);
+        this.caStore = config.getProperty(ConfigProvider.SDK_CA_STORE);
     }
 
     public Api connect()
