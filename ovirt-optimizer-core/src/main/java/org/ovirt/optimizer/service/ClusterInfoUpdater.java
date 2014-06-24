@@ -63,7 +63,7 @@ public class ClusterInfoUpdater implements Runnable {
                                 host.getName(), host.getId(), clusterId, host.getStatus().getState()));
                         if (host.getStatus().getState().equals("up")) {
                             /* Reconstruct references to other structures */
-                            host.getCluster().setDataCenter(dataCenter);
+                            host.setCluster(clusterInstance);
 
                             /* Add the host to fact database */
                             hosts.add(host);
