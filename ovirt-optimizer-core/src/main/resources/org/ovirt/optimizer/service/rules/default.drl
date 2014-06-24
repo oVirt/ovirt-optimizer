@@ -54,12 +54,12 @@ end
 rule "notEnoughGuaranteedMemory"
     when
         $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
-        $host: Host($memory: maxSchedulingMemory, $step.finalStep == true || id == $destination.id)
+        $host: Host($memory: maxSchedulingMemory / (1024*1024), $step.finalStep == true || id == $destination.id)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
                          $requiredMemory : memoryPolicy.guaranteed),
-                sum($requiredMemory)
+                sum($requiredMemory / (1024*1024))
         )
     then
         scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
@@ -70,12 +70,12 @@ end
 rule "notEnoughMemory"
     when
         $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $memory: maxSchedulingMemory + maxSchedulingMemory * cluster.memoryPolicy.overCommit.percent)
+        $host: Host($step.finalStep == true || id == $destination.id, $memory: (maxSchedulingMemory + maxSchedulingMemory * cluster.memoryPolicy.overCommit.percent) / (1024*1024))
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
                          $requiredMemory : memory),
-                sum($requiredMemory)
+                sum($requiredMemory / (1024*1024))
         )
     then
         scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
