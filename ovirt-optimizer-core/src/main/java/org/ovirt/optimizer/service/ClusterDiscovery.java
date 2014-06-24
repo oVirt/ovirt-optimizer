@@ -1,10 +1,10 @@
 package org.ovirt.optimizer.service;
 
-import org.slf4j.Logger;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.entities.Cluster;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.slf4j.Logger;
 
 import javax.annotation.ManagedBean;
 import javax.inject.Inject;

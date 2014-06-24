@@ -1,9 +1,9 @@
 package org.ovirt.optimizer.rest;
 
-import org.ovirt.optimizer.common.ScoreResult;
-import org.slf4j.Logger;
 import org.ovirt.optimizer.common.Result;
+import org.ovirt.optimizer.common.ScoreResult;
 import org.ovirt.optimizer.service.OptimizerServiceRemote;
+import org.slf4j.Logger;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;

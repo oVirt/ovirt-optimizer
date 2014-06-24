@@ -24,6 +24,7 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     List<Migration> steps;
     Set<Host> hosts;
     Set<Object> otherFacts;
+    Set<Object> fixedFacts;
     Set<VM> vms;
 
     @Override
@@ -36,12 +37,22 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
         this.score = score;
     }
 
+    public Set<Object> getFixedFacts() {
+        return fixedFacts;
+    }
+
+    public void setFixedFacts(Set<Object> fixedFacts) {
+        this.fixedFacts = fixedFacts;
+    }
+
     @Override
     public Collection<?> getProblemFacts() {
         Collection<Object> facts = new ArrayList<>();
         facts.addAll(vms);
+
         facts.addAll(hosts);
         facts.addAll(otherFacts);
+        facts.addAll(fixedFacts);
         return facts;
     }
 

@@ -1,6 +1,6 @@
 package org.ovirt.optimizer.util;
 
-import org.slf4j.*;
+import org.slf4j.Logger;
 
 import java.io.FileReader;
 import java.io.IOException;

@@ -27,6 +27,7 @@ public class TestDroolsJITCrash  {
         bestSolution.setHosts(new HashSet<Host>());
         bestSolution.setVms(new HashSet<VM>());
         bestSolution.setOtherFacts(new HashSet<Object>());
+        bestSolution.setFixedFacts(new HashSet<Object>());
 
         // Create cluster
         Cluster c = new Cluster();

@@ -94,7 +94,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         for (String clusterId: availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
 
-            ClusterOptimizer planner = new ClusterOptimizer(client, clusterId, maxSteps, new ClusterOptimizer.Finished() {
+            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client, clusterId, maxSteps, new ClusterOptimizer.Finished() {
                 @Override
                 public void solvingFinished(ClusterOptimizer planner, Thread thread) {
                     threads.remove(thread);
@@ -159,6 +159,21 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         synchronized (clusterOptimizers) {
             return clusterOptimizers.keySet();
         }
+    }
+
+    public void computeVmStartSequence(String cluster, String uuid) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return;
+        }
+
+
     }
 
     @Override

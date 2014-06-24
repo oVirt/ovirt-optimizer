@@ -4,12 +4,12 @@ import org.junit.Test;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
 
-import static org.junit.Assert.*;
-
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+
+import static org.junit.Assert.assertEquals;
 
 public class MigrationTest {
     @Test
