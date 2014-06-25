@@ -108,6 +108,10 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
         }
 
         for (VM vm: vms) {
+            if (vm.getHost() == null) {
+                continue;
+            }
+            
             situation.get(vm.getHost().getId()).add(vm.getId());
         }
 
