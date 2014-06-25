@@ -10,7 +10,7 @@ import org.optaplanner.core.api.solver.event.SolverEventListener;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
-import org.ovirt.optimizer.service.facts.VmToStart;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.problemspace.ClusterSituation;
 import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
@@ -153,7 +153,7 @@ public class ClusterOptimizer implements Runnable {
 
     public ClusterOptimizer optimizeVmStart(String vmUuid, Finished finishedCallback) {
         ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, bestSolution.getSteps().size(), finishedCallback);
-        optimizer.getBestSolution().getFixedFacts().add(new VmToStart(vmUuid));
+        optimizer.getBestSolution().getFixedFacts().add(new RunningVm(vmUuid));
         optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));
         return optimizer;
     }

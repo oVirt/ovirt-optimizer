@@ -8,6 +8,7 @@ import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,11 +75,14 @@ public class ClusterInfoUpdater implements Runnable {
 
                 for (VM vm: engine.getVMs().list()) {
                     final Host runningAt = vm.getHost();
-                    if (runningAt != null
-                            && hostIds.contains(runningAt.getId())) {
+                    if (runningAt == null ||
+                            hostIds.contains(runningAt.getId())) {
                         log.debug(String.format("Discovered VM %s (%s) on cluster %s",
                                 vm.getName(), vm.getId(), clusterId));
                         vms.add(vm);
+                        if (runningAt != null) {
+                            facts.add(new RunningVm(vm.getId()));
+                        }
                     }
                 }
 

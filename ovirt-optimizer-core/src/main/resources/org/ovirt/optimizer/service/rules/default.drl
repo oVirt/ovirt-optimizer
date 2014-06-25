@@ -9,6 +9,8 @@ import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.optimizer.util.RuleLogger;
 
+import org.ovirt.optimizer.service.facts.RunningVm;
+
 global HardSoftScoreHolder scoreHolder;
 
 /*
@@ -26,7 +28,8 @@ rule "hardScoreTemplate"
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memoryPolicy.guaranteed),
+                         $requiredMemory : memoryPolicy.guaranteed)
+                  and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
         )
     then
@@ -40,7 +43,8 @@ rule "softScoreTemplate"
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
                 $vm : VM($vmId : id,
                          $finalStep.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memoryPolicy.guaranteed),
+                         $requiredMemory : memoryPolicy.guaranteed)
+                 and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
         )
     then
@@ -56,9 +60,10 @@ rule "notEnoughGuaranteedMemory"
         $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
         $host: Host($memory: maxSchedulingMemory / (1024*1024), $step.finalStep == true || id == $destination.id)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-                $vm : VM($vmId : id,
+                VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memoryPolicy.guaranteed),
+                         $requiredMemory : memoryPolicy.guaranteed)
+                         and exists RunningVm(id == $vmId),
                 sum($requiredMemory / (1024*1024))
         )
     then
@@ -72,9 +77,10 @@ rule "notEnoughMemory"
         $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id, $memory: (maxSchedulingMemory + maxSchedulingMemory * cluster.memoryPolicy.overCommit.percent) / (1024*1024))
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-                $vm : VM($vmId : id,
+                VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memory),
+                         $requiredMemory : memory)
+                    and exists RunningVm(id == $vmId),
                 sum($requiredMemory / (1024*1024))
         )
     then
@@ -92,7 +98,8 @@ rule "notEnoughCores"
         $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredCpus : cpu.topology.cores),
+                         $requiredCpus : cpu.topology.cores)
+                  and exists RunningVm(id == $vmId),
                 sum($requiredCpus)
         )
     then
@@ -106,7 +113,8 @@ rule "notEnoughThreads"
         $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredCpus : cpu.topology.cores),
+                         $requiredCpus : cpu.topology.cores)
+                and exists RunningVm(id == $vmId),
                 sum($requiredCpus)
         )
     then
@@ -126,6 +134,7 @@ rule "checkRequiredDisplayNetworks"
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm: VM($vmId : id,
            $step.getAssignment($vmId) == $host.id)
+        RunningVm(id == $vmId)
         ArrayList(size == 0) from collect(
            Network(dataCenter.id == $host.cluster.dataCenter.id,
                    display == true)
@@ -145,12 +154,26 @@ rule "pinToHost"
                  $step.getAssignment($vmId) == $host.id,
                  placementPolicy.host != $host,
                  placementPolicy.affinity != "migratable")
+        RunningVm(id == $vmId)
     then
         scoreHolder.addHardConstraintMatch(kcontext, -1);
 end
 
 // TODO PowerSavingBalancePolicyUnit
 // TODO PowerSavingWeightPolicyUnit
+
+// Additional rules
+
+// Ensure all VMs are assigned
+rule "ensureVmRunning"
+    when
+        $step: Migration(finalStep == true)
+        $vm: VM($vmId : id,
+                $step.getAssignment($vmId) == null)
+        RunningVm(id == $vmId)
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -100);
+end
 
 // Test rules
 
@@ -177,6 +200,7 @@ rule "vmsAvailable"
         VM($vm: id)
         Host($host: id,
              $finalStep.getAssignment($vm) == $host)
+        RunningVm(id == $vmId)
     then
         RuleLogger.info(kcontext, "VM {} runs at host {}", $vm, $host);
         scoreHolder.addSoftConstraintMatch(kcontext, 1);
@@ -191,13 +215,15 @@ rule "balancedMemory"
         $requiredMemoryTotal1 : Number() from accumulate(
                 VM($vmId1 : id,
                    $finalStep.getAssignment($vmId1) == $id1,
-                   $requiredMemory : memoryPolicy.guaranteed),
+                   $requiredMemory : memoryPolicy.guaranteed)
+                 and exists RunningVm(id == $vmId1),
                 sum($requiredMemory)
         )
         $requiredMemoryTotal2 : Number() from accumulate(
                 VM($vmId2 : id,
                    $finalStep.getAssignment($vmId2) == $id2,
-                   $requiredMemory2 : memoryPolicy.guaranteed),
+                   $requiredMemory2 : memoryPolicy.guaranteed)
+                and exists RunningVm(id == $vmId2),
                 sum($requiredMemory2)
         )
     then
