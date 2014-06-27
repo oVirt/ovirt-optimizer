@@ -10,6 +10,7 @@ import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.optimizer.util.RuleLogger;
 
 import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.service.facts.CountThreadsAsCores;
 
 global HardSoftScoreHolder scoreHolder;
 
@@ -89,16 +90,18 @@ end
 
 // CpuLevelFilterPolicyUnit
 
-/* Compare the number of cores
-// TODO enable only one of the following two rules based on the Count Threads as cores setting
+/* Compare the number of cores */
 rule "notEnoughCores"
     when
+        not(exists CountThreadsAsCores())
         $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $cores: cpu.topology.cores)
+        $host: Host($step.finalStep == true || id == $destination.id,
+                    cpu.topology != null, $cores: cpu.topology.cores != null)
         $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredCpus : cpu.topology.cores)
+                         cpu.topology != null,
+                         $requiredCpus : cpu.topology.cores != null)
                   and exists RunningVm(id == $vmId),
                 sum($requiredCpus)
         )
@@ -108,8 +111,10 @@ end
 
 rule "notEnoughThreads"
     when
+        exists CountThreadsAsCores()
         $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $cores: cpu.topology.threads)
+        $host: Host($step.finalStep == true || id == $destination.id,
+                    cpu.topology != null, $cores: cpu.topology.threads != null)
         $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
                 $vm : VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
@@ -120,7 +125,7 @@ rule "notEnoughThreads"
     then
         scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpuCoresTotal.intValue());
 end
-*/
+
 
 // TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionBalancePolicyUnit
 // TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionWeightPolicyUnit
