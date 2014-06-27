@@ -40,7 +40,7 @@ Vm to host assignments to utilize cluster resources better.
 
 %package ui
 Summary:        UI for displaying results in oVirt webadmin
-Requires:	%{name}-webadmin-portal >= 3.4
+Requires:	ovirt-engine-webadmin-portal >= 3.4
 
 %description ui
 This subpackage adds an UI plugin to the oVirt webadmin portal.
