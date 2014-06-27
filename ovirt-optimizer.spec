@@ -3,8 +3,23 @@
 %global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %global jetty_deployments %{_datadir}/jetty/webapps
 
+%if 0%{?rhel} < 7
+%global with_jetty 0
+%global with_jboss 1
+%endif
+
+%if 0%{?fedora} < 20
+%global with_jboss 1
+%global with_jetty 1
+%endif
+
+%if 0%{?fedora} >= 20
+%global with_jboss 0
+%global with_jetty 1
+%endif
+
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.1
+%define project_version 0.2
 %{!?_version: %define _version %{project_version}}
 
 Name:		ovirt-optimizer
@@ -31,7 +46,7 @@ Requires:       resteasy
 Requires:       jackson
 Requires:       slf4j
 Requires:       quartz
-Requires:       ovirt-engine-sdk-java >= 3.4
+Requires:       ovirt-engine-sdk-java >= 3.5.0.2
 Requires:       protobuf-java >= 2.5
 
 %description
@@ -47,6 +62,7 @@ This subpackage adds an UI plugin to the oVirt webadmin portal.
 This plugin then adds a Tab to the cluster display and presents
 the assingment recommendations to the sysadmin there.
 
+%if 0%{?with_jboss}
 %package jboss7
 Summary:       Integration of the optimization service to Jboss 7.
 Requires:      %{name} = %{version}
@@ -55,7 +71,9 @@ Requires:	jboss-as >= 7.1.1-9.3
 %description jboss7
 This subpackage deploys the optimizer service to the standard Jboss 7
 application server.
+%endif
 
+%if 0%{?with_jetty}
 %package jetty
 Summary:       Integration of the optimization service to Jetty 9.
 Requires:      %{name} = %{version}
@@ -66,6 +84,7 @@ Requires:      cdi-api
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
 server.
+%endif
 
 %prep
 %setup -c -q
@@ -94,10 +113,6 @@ pushd ovirt-optimizer-jboss7
 mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
-# Install the exploded Jboss war to javadir
-cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss7.war
-
-# Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_javadir}/antlr3-runtime.jar
 %{_javadir}/commons-beanutils.jar
@@ -113,21 +128,31 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_javadir}/protobuf.jar
 %{_javadir}/quartz.jar
 %{_javadir}/xpp3-minimal.jar"
-echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
 
-# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
 JBOSS_BUNDLE="target/lib/drools-*
 target/lib/kie-*
 target/lib/optaplanner-*
 target/lib/mvel2-*
 target/lib/xmlpull-*
 target/lib/xstream-*"
+
+%if 0%{?with_jboss}
+
+# Install the exploded Jboss war to javadir
+cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss7.war
+
+# Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
+echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
+
+# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
 echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
 
 # Symlink it to Jboss war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jboss_deployments}
 ln -sf %{_javadir}/%{name}/jboss7.war %{buildroot}%{jboss_deployments}/%{name}.war
 touch %{buildroot}%{jboss_deployments}/%{name}.war.dodeploy
+
+%endif
 
 popd
 
@@ -142,13 +167,6 @@ pushd ovirt-optimizer-jetty
 # by this package's dependencies.
 mkdir target/lib
 mv target/%{name}-jetty/WEB-INF/lib/* target/lib
-
-# Install the exploded Jetty war to javadir
-install -dm 755 %{buildroot}%{_javadir}/%{name}/jetty
-cp -ar target/%{name}-jetty %{buildroot}%{_javadir}/%{name}/jetty/%{name}
-
-# Symlink libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
-echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
 JETTY_SYMLINK="%{_javadir}/cdi-api.jar
 %{_javadir}/resteasy/resteasy-cdi.jar
@@ -174,20 +192,31 @@ JETTY_SYMLINK="%{_javadir}/cdi-api.jar
 /usr/share/jetty/lib/jetty-util-*
 %{_javadir}/jsp.jar
 %{_javadir}/jcip-annotations.jar"
-echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
-
-# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jetty.war/WEB-INF/lib
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
 JETTY_BUNDLE="target/lib/weld-*
 target/lib/activation-1.1*
 target/lib/javax.inject-1.jar
 target/lib/jsr250-*"
+
+%if 0%{?with_jetty}
+
+# Install the exploded Jetty war to javadir
+install -dm 755 %{buildroot}%{_javadir}/%{name}/jetty
+cp -ar target/%{name}-jetty %{buildroot}%{_javadir}/%{name}/jetty/%{name}
+
+# Symlink libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
+echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
+
+# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jetty.war/WEB-INF/lib
+echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
 # Symlink it to Jetty war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jetty_deployments}
 ln -sf %{_javadir}/%{name}/jetty/%{name} %{buildroot}%{jetty_deployments}/%{name}
+
+%endif
 
 popd
 
@@ -220,18 +249,32 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{_javadir}/%{name}/*.jar
 %config /etc/%{name}/*
 
+%if 0%{?with_jetty}
 %files jetty
 %dir %{_javadir}/%{name}/jetty/%{name}
 %{_javadir}/%{name}/jetty/%{name}/*
 %{jetty_deployments}/*
+%endif
 
+%if 0%{?with_jboss}
 %files jboss7
 %dir %{_javadir}/%{name}/jboss7.war
 %{_javadir}/%{name}/jboss7.war/*
 %{jboss_deployments}/*
+%endif
 
 %files ui
 %dir %{engine_data}/ui-plugins/ovirt-optimizer-resources
 %config %{engine_etc}/ui-plugins/ovirt-optimizer-config.json
 %{engine_data}/ui-plugins/ovirt-optimizer.json
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
+
+%changelog
+* Fri Jun 27 2014 Martin Sivak <msivak@redhat.com> 0.2-1
+- Support for CPU cores and threads
+- Support for VM start optimization
+- Partial support for CentOS6 and F20+
+
+* Fri Jun 27 2014 Martin Sivak <msivak@redhat.com> 0.1-1
+Initial release
+

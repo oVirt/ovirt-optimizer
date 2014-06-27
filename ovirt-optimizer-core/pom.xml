@@ -4,7 +4,7 @@
     <parent>
         <artifactId>ovirt-optimizer</artifactId>
         <groupId>org.ovirt.optimizer</groupId>
-        <version>0.1</version>
+        <version>0.2</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>org.ovirt.engine.sdk</groupId>
             <artifactId>ovirt-engine-sdk-java</artifactId>
-            <version>3.4.0.7</version>
+            <version>3.5.0.2</version>
         </dependency>
         <dependency>
             <groupId>xpp3</groupId>
