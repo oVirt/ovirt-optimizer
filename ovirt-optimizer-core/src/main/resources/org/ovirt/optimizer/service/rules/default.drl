@@ -53,7 +53,7 @@ rule "softScoreTemplate"
 end
 */
 
-// TODO MemoryPolicyUnit
+// MemoryPolicyUnit
 // Check whether host has enough memory to hold just the guaranteed
 // memory for all the VMs
 rule "notEnoughGuaranteedMemory"
@@ -149,8 +149,7 @@ rule "checkRequiredDisplayNetworks"
 
 end
 
-// TODO MigrationPolicyUnit
-// TODO PinToHostPolicyUnit
+// PinToHostPolicyUnit
 rule "pinToHost"
     when
         $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
