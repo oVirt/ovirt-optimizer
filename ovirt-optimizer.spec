@@ -71,7 +71,7 @@ server.
 %setup -c -q
 
 %build
-mvn --offline clean install
+mvn --offline %{?with_extra_maven_opts} clean install
 
 %install
 ##
