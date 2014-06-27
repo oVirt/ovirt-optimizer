@@ -13,6 +13,7 @@ import org.ovirt.optimizer.util.RuleLogger;
 import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.facts.CountThreadsAsCores;
 import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
+import org.ovirt.optimizer.service.facts.PolicyUnit;
 
 global HardSoftScoreHolder scoreHolder;
 
@@ -144,8 +145,42 @@ end
 
 // TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionBalancePolicyUnit
 // TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionWeightPolicyUnit
-// TODO org.ovirt.engine.core.bll.scheduling.policyunits.HostedEngineHAClusterFilterPolicyUnit
-// TODO HostedEngineHAClusterWeightPolicyUnit
+
+// org.ovirt.engine.core.bll.scheduling.policyunits.HostedEngineHAClusterFilterPolicyUnit
+rule "hostedEngineClusterFilter"
+  when
+      exists PolicyUnitEnabled(uuid == PolicyUnit.HOSTED_ENGINE_FILTER.uuid)
+      $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+      $host: Host($step.finalStep == true || id == $destination.id,
+                  hostedEngine == null || hostedEngine.score == 0)
+      $vm: VM($vmId : id, origin == "hostedEngine",
+          $step.getAssignment($vmId) == $host.id)
+      RunningVm(id == $vmId)
+  then
+      scoreHolder.addHardConstraintMatch(kcontext, -1);
+end
+
+// HostedEngineHAClusterWeightPolicyUnit
+// Penalize all hosted_engine migrations to host with non-maximum
+// score
+rule "hostedEngineClusterWeight"
+  when
+      exists PolicyUnitEnabled(uuid == PolicyUnit.HOSTED_ENGINE_WEIGHT.uuid)
+      $step: Migration(finalStep == true)
+      $host: Host(hostedEngine != null, $dScore: hostedEngine.score)
+      $vm: VM($vmId : id, origin == "hostedEngine",
+          $step.getAssignment($vmId) == $host.id)
+      RunningVm(id == $vmId)
+
+      // Find best HE host score
+      $best: Number(intValue > 0) from accumulate (
+          $h: Host(hostedEngine != null, $cand: hostedEngine.score),
+          max($cand)
+      )
+  then
+      scoreHolder.addSoftConstraintMatch(kcontext, - ($best.intValue() - $dScore));
+end
+
 
 // TODO NetworkPolicyUnit
 rule "checkRequiredDisplayNetworks"

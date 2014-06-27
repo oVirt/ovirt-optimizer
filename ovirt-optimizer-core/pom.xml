@@ -57,7 +57,7 @@
         <dependency>
             <groupId>org.ovirt.engine.sdk</groupId>
             <artifactId>ovirt-engine-sdk-java</artifactId>
-            <version>3.5.0.2</version>
+            <version>3.5.2.0</version>
         </dependency>
         <dependency>
             <groupId>xpp3</groupId>

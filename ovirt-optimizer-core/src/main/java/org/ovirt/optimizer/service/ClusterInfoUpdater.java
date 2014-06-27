@@ -73,7 +73,8 @@ public class ClusterInfoUpdater implements Runnable {
                 Cluster clusterInstance = engine.getClusters().getById(clusterId);
                 DataCenter dataCenter = clusterInstance.getDataCenter();
 
-                for (Host host: engine.getHosts().list()) {
+                // Ask for all content (needed to get hosted engine info)
+                for (Host host: engine.getHosts().list(null, null, null, "true")) {
                     if (host.getCluster().getId().equals(clusterId)) {
                         log.debug(String.format("Discovered host %s (%s) on cluster %s with state %s",
                                 host.getName(), host.getId(), clusterId, host.getStatus().getState()));

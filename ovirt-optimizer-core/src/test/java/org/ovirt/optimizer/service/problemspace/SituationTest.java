@@ -3,6 +3,7 @@ package org.ovirt.optimizer.service.problemspace;
 import org.junit.Test;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.HostedEngine;
 import org.ovirt.engine.sdk.entities.Status;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.optimizer.service.facts.PolicyUnit;
@@ -160,4 +161,186 @@ public class SituationTest {
 
         assertNotEquals(0, result.getHardScore());
     }
+
+    /**
+     * Test migration of hosted engine to non-HE enabled host
+     */
+    @Test
+    public void testInvalidHEMigrationHostNotConfigured() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host1 = optimizer.createHost("H1", 1000000000L);
+        host1.setHostedEngine(new HostedEngine());
+        host1.getHostedEngine().setActive(true);
+        host1.getHostedEngine().setScore(2400);
+        host1.getHostedEngine().setConfigured(true);
+        host1.getHostedEngine().setGlobalMaintenance(false);
+        host1.getHostedEngine().setLocalMaintenance(false);
+
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+
+        VM vm1 = optimizer.createVm("VM-A", 10000000L);
+        vm1.setHost(host1);
+        vm1.setStatus(new Status());
+        vm1.getStatus().setState("UP");
+        vm1.setOrigin("hostedEngine");
+
+        HardSoftScore result = optimizer
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_FILTER)
+                .addMigration(vm1, host2)
+                .score();
+
+        assertNotEquals(0, result.getHardScore());
+    }
+
+    /**
+     * Test migration of hosted engine to HE enabled host
+     * with score 0
+     */
+    @Test
+    public void testInvalidHEMigrationHostNotReady() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host1 = optimizer.createHost("H1", 1000000000L);
+        host1.setHostedEngine(new HostedEngine());
+        host1.getHostedEngine().setActive(true);
+        host1.getHostedEngine().setScore(2400);
+        host1.getHostedEngine().setConfigured(true);
+        host1.getHostedEngine().setGlobalMaintenance(false);
+        host1.getHostedEngine().setLocalMaintenance(false);
+
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+        host2.setHostedEngine(new HostedEngine());
+        host2.getHostedEngine().setActive(true);
+        host2.getHostedEngine().setScore(0);
+        host2.getHostedEngine().setConfigured(true);
+        host2.getHostedEngine().setGlobalMaintenance(false);
+        host2.getHostedEngine().setLocalMaintenance(false);
+
+        VM vm1 = optimizer.createVm("VM-A", 10000000L);
+        vm1.setHost(host1);
+        vm1.setStatus(new Status());
+        vm1.getStatus().setState("UP");
+        vm1.setOrigin("hostedEngine");
+
+        HardSoftScore result = optimizer
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_FILTER)
+                .addMigration(vm1, host2)
+                .score();
+
+        assertNotEquals(0, result.getHardScore());
+    }
+
+    /**
+     * Test migration of hosted engine to HE enabled host
+     * with score lower than the host that is currently
+     * used
+     */
+    @Test
+    public void testValidHEMigrationHostInferior() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host1 = optimizer.createHost("H1", 1000000000L);
+        host1.setHostedEngine(new HostedEngine());
+        host1.getHostedEngine().setActive(true);
+        host1.getHostedEngine().setScore(2400);
+        host1.getHostedEngine().setConfigured(true);
+        host1.getHostedEngine().setGlobalMaintenance(false);
+        host1.getHostedEngine().setLocalMaintenance(false);
+
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+        host2.setHostedEngine(new HostedEngine());
+        host2.getHostedEngine().setActive(true);
+        host2.getHostedEngine().setScore(2000);
+        host2.getHostedEngine().setConfigured(true);
+        host2.getHostedEngine().setGlobalMaintenance(false);
+        host2.getHostedEngine().setLocalMaintenance(false);
+
+        VM vm1 = optimizer.createVm("VM-A", 10000000L);
+        vm1.setHost(host1);
+        vm1.setStatus(new Status());
+        vm1.getStatus().setState("UP");
+        vm1.setOrigin("hostedEngine");
+
+        HardSoftScore result = optimizer
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_FILTER)
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_WEIGHT)
+                .addMigration(vm1, host2)
+                .score();
+
+        assertEquals(0, result.getHardScore());
+        // -1 for single performed migration
+        assertNotEquals(-1, result.getSoftScore());
+    }
+
+    /**
+     * Test migration of hosted engine to HE enabled host
+     * with score higher than the host that is currently
+     * used
+     */
+    @Test
+    public void testValidHEMigrationHostBetter() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host1 = optimizer.createHost("H1", 1000000000L);
+        host1.setHostedEngine(new HostedEngine());
+        host1.getHostedEngine().setActive(true);
+        host1.getHostedEngine().setScore(2000);
+        host1.getHostedEngine().setConfigured(true);
+        host1.getHostedEngine().setGlobalMaintenance(false);
+        host1.getHostedEngine().setLocalMaintenance(false);
+
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+        host2.setHostedEngine(new HostedEngine());
+        host2.getHostedEngine().setActive(true);
+        host2.getHostedEngine().setScore(2400);
+        host2.getHostedEngine().setConfigured(true);
+        host2.getHostedEngine().setGlobalMaintenance(false);
+        host2.getHostedEngine().setLocalMaintenance(false);
+
+        VM vm1 = optimizer.createVm("VM-A", 10000000L);
+        vm1.setHost(host1);
+        vm1.setStatus(new Status());
+        vm1.getStatus().setState("UP");
+        vm1.setOrigin("hostedEngine");
+
+        HardSoftScore result = optimizer
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_FILTER)
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_WEIGHT)
+                .addMigration(vm1, host2)
+                .score();
+
+        assertEquals(0, result.getHardScore());
+        // -1 for a single performed migration
+        assertEquals(-1, result.getSoftScore());
+    }
+
+    /**
+     * Test HE rules for NPEs.
+     */
+    @Test
+    public void testHERulesWithoutHE() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host1 = optimizer.createHost("H1", 1000000000L);
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+
+        VM vm1 = optimizer.createVm("VM-A", 10000000L);
+        vm1.setHost(host1);
+        vm1.setStatus(new Status());
+        vm1.getStatus().setState("UP");
+        vm1.setOrigin("hostedEngine");
+
+        HardSoftScore result = optimizer
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_FILTER)
+                .enablePolicyUnit(PolicyUnit.HOSTED_ENGINE_WEIGHT)
+                .addMigration(vm1, host2)
+                .score();
+
+        // destination host is not HE enabled
+        assertNotEquals(0, result.getHardScore());
+        // -1 for a single performed migration
+        assertEquals(-1, result.getSoftScore());
+    }
 }
+

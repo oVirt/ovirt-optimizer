@@ -66,7 +66,7 @@ Requires:       protobuf-java >= 2.5
 %endif
 
 Requires:       slf4j
-Requires:       ovirt-engine-sdk-java >= 3.5.0.2
+Requires:       ovirt-engine-sdk-java >= 3.5.2.0
 
 %description
 %{name} service collects data from the oVirt engine and proposes
