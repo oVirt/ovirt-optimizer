@@ -49,7 +49,6 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     public Collection<?> getProblemFacts() {
         Collection<Object> facts = new ArrayList<>();
         facts.addAll(vms);
-
         facts.addAll(hosts);
         facts.addAll(otherFacts);
         facts.addAll(fixedFacts);

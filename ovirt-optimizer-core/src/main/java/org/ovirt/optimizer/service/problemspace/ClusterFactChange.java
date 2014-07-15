@@ -3,7 +3,9 @@ package org.ovirt.optimizer.service.problemspace;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.optaplanner.core.impl.solver.ProblemFactChange;
 import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.Status;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -132,6 +134,18 @@ public class ClusterFactChange implements ProblemFactChange {
             scoreDirector.beforeProblemFactAdded(fact);
             space.getOtherFacts().add(fact);
             scoreDirector.afterProblemFactAdded(fact);
+        }
+
+        // Remove VmStart requests for Vms that are already up
+        for (Iterator<Object> i = space.getFixedFacts().iterator(); i.hasNext(); ) {
+            Object fact = i.next();
+            if (fact instanceof RunningVm
+                    && vmMap.containsKey(((RunningVm)fact).getId())
+                    && vmMap.get(((RunningVm)fact).getId()).getStatus().getState().toLowerCase().equals("up")) {
+                scoreDirector.beforeProblemFactRemoved(fact);
+                i.remove();
+                scoreDirector.afterProblemFactRemoved(fact);
+            }
         }
 
         /* Recompute the caches in Migration steps

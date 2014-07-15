@@ -48,7 +48,14 @@
     <button ng-click="frozen=true">Freeze solution</button>
     <button ng-click="frozen=false">Unfreeze solution</button>
 
-    <h2>Migration steps</h2>
+    <h2>VMs that should be started</h2>
+    <table>
+        <tr ng-repeat="vm in result.requestedVms">
+            <td>{{ vms[vm].name }}</td>
+        </tr>
+    </table>
+
+    <h2>Migration/Start steps</h2>
     <table>
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
@@ -75,10 +82,12 @@
         </tbody>
     </table>
 
+    <!--
     <p>Raw data: {{ result }}</p>
     <p>Raw vm data: {{ vms }}</p>
     <p>Raw host data: {{ hosts }}</p>
     <p>Verification data: {{ verification }}</p>
+    //-->
 </div>
 
 <script language="javascript" src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.16/angular.js"></script>

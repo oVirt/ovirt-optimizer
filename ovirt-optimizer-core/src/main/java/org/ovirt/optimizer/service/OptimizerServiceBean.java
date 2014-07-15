@@ -5,6 +5,7 @@ import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.optimizer.common.Result;
 import org.ovirt.optimizer.common.ScoreResult;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
 import org.ovirt.optimizer.util.Autoload;
@@ -161,7 +162,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         }
     }
 
-    public void computeVmStartSequence(String cluster, String uuid) {
+    public void computeVmStart(String cluster, String uuid) {
         ClusterOptimizer clusterOptimizer;
 
         synchronized (clusterOptimizers) {
@@ -173,7 +174,22 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             return;
         }
 
+        clusterOptimizer.ensureVmIsRunning(uuid);
+    }
 
+    public void cancelVmStart(String cluster, String uuid) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return;
+        }
+
+        clusterOptimizer.cancelVmIsRunning(uuid);
     }
 
     @Override
@@ -199,8 +215,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     @Override
     public Result getCurrentResult(String cluster) {
         ClusterOptimizer clusterOptimizer;
-        Result r = new Result();
-        r.setCluster(cluster);
+        Result r;
 
         synchronized (clusterOptimizers) {
             clusterOptimizer = clusterOptimizers.get(cluster);
@@ -208,18 +223,12 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
-            r.setHostToVms(new HashMap<String, Set<String>>());
-            r.setVmToHost(new HashMap<String, String>());
-            r.setMigrations(new ArrayList<Map<String, String>>());
-            r.setCurrentVmToHost(new HashMap<String, String>());
-            r.setHosts(new HashSet<String>());
-            r.setVms(new HashSet<String>());
-            r.setHardScore(0);
-            r.setSoftScore(0);
+            r = Result.createEmpty(cluster);
         }
         else {
             OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
 
+            r = new Result(cluster);
             r.setHardScore(best.getScore().getHardScore());
             r.setSoftScore(best.getScore().getSoftScore());
 
@@ -231,6 +240,13 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             r.setVms(new HashSet<String>());
             for (VM vm: best.getVms()) {
                 r.getVms().add(vm.getId());
+            }
+
+            r.setRequestedVms(new HashSet<String>());
+            for (Object fact: best.getFixedFacts()) {
+                if (fact instanceof RunningVm) {
+                    r.getRequestedVms().add(((RunningVm)fact).getId());
+                }
             }
 
             r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());

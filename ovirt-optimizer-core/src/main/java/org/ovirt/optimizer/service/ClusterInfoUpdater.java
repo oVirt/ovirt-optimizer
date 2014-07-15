@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.service;
 
+import org.apache.http.conn.HttpHostConnectException;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.decorators.Cluster;
 import org.ovirt.engine.sdk.entities.DataCenter;
@@ -13,6 +14,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.net.ConnectException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -95,6 +97,9 @@ public class ClusterInfoUpdater implements Runnable {
                     }
                 }
 
+            } catch (ConnectException ex) {
+                log.error("Cluster update failed", ex);
+                continue;
             } catch (IOException ex) {
                 log.error("Cluster update failed", ex);
                 continue;

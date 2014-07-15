@@ -3,6 +3,7 @@ package org.ovirt.optimizer.rest;
 import org.ovirt.optimizer.common.Result;
 import org.ovirt.optimizer.common.ScoreResult;
 import org.ovirt.optimizer.service.OptimizerServiceRemote;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.slf4j.Logger;
 
 import javax.inject.Inject;
@@ -14,6 +15,7 @@ import javax.ws.rs.Path;
 import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
+import javax.ws.rs.core.Response;
 
 /**
  * This is the main endpoint for getting the optimization results.
@@ -50,6 +52,33 @@ public class ResultResource {
         response.getOutputHeaders().putSingle("Access-Control-Allow-Headers", "Content-Type");
 
         return optimizer.recomputeScore(cluster, result);
+    }
+
+    @POST
+    @Path("/{cluster}/request")
+    @Produces("application/json")
+    @Consumes("application/json")
+    public Response requestVm(RunningVm request,
+                                 @PathParam("cluster") String cluster) {
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Origin", "*");
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Methods", "POST");
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Headers", "Content-Type");
+
+        optimizer.computeVmStart(cluster, request.getId());
+        return Response.ok().build();
+    }
+
+    @POST
+    @Path("/{cluster}/cancel")
+    @Produces("application/json")
+    @Consumes("application/json")
+    public Response CancelVm(RunningVm request, @PathParam("cluster") String cluster) {
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Origin", "*");
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Methods", "POST");
+        response.getOutputHeaders().putSingle("Access-Control-Allow-Headers", "Content-Type");
+
+        optimizer.cancelVmStart(cluster, request.getId());
+        return Response.ok().build();
     }
 
     @OPTIONS

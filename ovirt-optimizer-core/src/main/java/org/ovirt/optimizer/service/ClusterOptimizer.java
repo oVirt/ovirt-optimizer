@@ -11,7 +11,9 @@ import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.service.problemspace.CancelVmRunningFactChange;
 import org.ovirt.optimizer.service.problemspace.ClusterSituation;
+import org.ovirt.optimizer.service.problemspace.EnsureVmRunningFactChange;
 import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
 import org.slf4j.Logger;
@@ -272,5 +274,13 @@ public class ClusterOptimizer implements Runnable {
 
     private Solver getSolver() {
         return solver;
+    }
+
+    public void ensureVmIsRunning(String uuid) {
+        solver.addProblemFactChange(new EnsureVmRunningFactChange(uuid));
+    }
+
+    public void cancelVmIsRunning(String uuid) {
+        solver.addProblemFactChange(new CancelVmRunningFactChange(uuid));
     }
 }

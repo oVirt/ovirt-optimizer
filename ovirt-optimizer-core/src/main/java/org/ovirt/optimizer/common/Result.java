@@ -2,6 +2,9 @@ package org.ovirt.optimizer.common;
 
 import javax.xml.bind.annotation.XmlRootElement;
 import java.io.Serializable;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -14,11 +17,25 @@ public class Result implements Serializable {
     List<Map<String, String>> migrations;
     Set<String> hosts;
     Set<String> vms;
+    Set<String> requestedVms;
     String cluster;
     int softScore;
     int hardScore;
 
-    public Result() {
+    public Result(String cluster) {
+        this.cluster = cluster;
+    }
+
+    static public Result createEmpty(String cluster) {
+        Result result = new Result(cluster);
+        result.setHostToVms(new HashMap<String, Set<String>>());
+        result.setVmToHost(new HashMap<String, String>());
+        result.setCurrentVmToHost(new HashMap<String, String>());
+        result.setMigrations(new ArrayList<Map<String, String>>());
+        result.setHosts(new HashSet<String>());
+        result.setVms(new HashSet<String>());
+        result.setRequestedVms(new HashSet<String>());
+        return result;
     }
 
     public Map<String, Set<String>> getHostToVms() {
@@ -91,5 +108,13 @@ public class Result implements Serializable {
 
     public void setVms(Set<String> vms) {
         this.vms = vms;
+    }
+
+    public Set<String> getRequestedVms() {
+        return requestedVms;
+    }
+
+    public void setRequestedVms(Set<String> requestedVms) {
+        this.requestedVms = requestedVms;
     }
 }
