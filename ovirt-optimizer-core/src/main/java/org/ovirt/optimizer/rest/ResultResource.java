@@ -59,30 +59,32 @@ public class ResultResource {
     @Produces("application/json")
     @Consumes("application/json")
     public Response requestVm(RunningVm request,
-                                 @PathParam("cluster") String cluster) {
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Origin", "*");
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Methods", "POST");
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Headers", "Content-Type");
-
+                              @PathParam("cluster") String cluster) {
         optimizer.computeVmStart(cluster, request.getId());
-        return Response.ok().build();
+        return Response.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "POST")
+                .header("Access-Control-Allow-Headers", "Content-Type")
+                .build();
     }
 
     @POST
     @Path("/{cluster}/cancel")
     @Produces("application/json")
     @Consumes("application/json")
-    public Response CancelVm(RunningVm request, @PathParam("cluster") String cluster) {
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Origin", "*");
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Methods", "POST");
-        response.getOutputHeaders().putSingle("Access-Control-Allow-Headers", "Content-Type");
+    public Response CancelVm(RunningVm request,
+                             @PathParam("cluster") String cluster) {
 
         optimizer.cancelVmStart(cluster, request.getId());
-        return Response.ok().build();
+        return Response.ok()
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "POST")
+                .header("Access-Control-Allow-Headers", "Content-Type")
+                .build();
     }
 
     @OPTIONS
-    @Path("/{cluster}/score")
+    @Path("/{cluster}/{end:.*}")
     public void optionsForCors(String cluster) {
         response.getOutputHeaders().putSingle("Access-Control-Allow-Origin", "*");
         response.getOutputHeaders().putSingle("Access-Control-Allow-Methods", "POST");

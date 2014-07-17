@@ -2,12 +2,68 @@
 <html>
 <head></head>
 <body>
+<script src="http://code.jquery.com/jquery-1.11.1.min.js" language="javascript"></script>
 <script type='text/javascript'>
     var api = parent.pluginApi('oVirtOptimizer');
+    var cfg = api.configObject();
+
+    function vmAction(action, paramsVms) {
+        return $.ajax({method: 'GET',
+            url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms",
+            headers: {"Accept": "application/json"},
+            success: function (data) {
+                // Create VM to Cluster cache
+                var mapping = {};
+                data.vm.forEach(function (vm) {
+                    console.log("Detected vm: "+vm.id+" on cluster "+vm.cluster.id);
+                    mapping[vm.id] = vm.cluster.id;
+                });
+
+                // Convert arguments object to Array
+                var vms = [];
+                for (var i = 0; i < paramsVms.length; i++) {
+                    vms.push(paramsVms[i]);
+                }
+
+                vms.forEach(function (vm) {
+                    var clusterId = mapping[vm.id];
+                    console.log("Getting cluster id for VM "+vm.id+" -> "+clusterId);
+                    console.log("Sending "+vm.id+" to "+cfg["baseurl"]+clusterId+"/"+action);
+                    $.ajax({
+                        method: "POST",
+                        url: cfg["baseurl"]+clusterId+"/"+action,
+                        contentType: 'application/json; charset=UTF-8',
+                        data: JSON.stringify({
+                            id: vm.id
+                        })
+                    });
+                });
+            }
+        });
+    }
+
     api.register({
         UiInit: function() {
             api.addSubTab('Cluster', 'Optimizer result', 'ovirt-optimizer-cluster-tab',
                 'plugin/oVirtOptimizer/result.html');
+
+            api.addMainTabActionButton('VirtualMachine', 'Optimize start', {
+                onClick: function() {
+                    vmAction("request", arguments);
+                },
+                isEnabled: function() {
+                    return arguments.length >= 1;
+                }
+            });
+
+            api.addMainTabActionButton('VirtualMachine', 'Cancel optimization', {
+                onClick: function() {
+                    vmAction("cancel", arguments);
+                },
+                isEnabled: function() {
+                    return arguments.length >= 1;
+                }
+            });
         },
         ClusterSelectionChange: function() {
             if (arguments.length != 1) {
