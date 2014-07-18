@@ -52,6 +52,7 @@
     <table>
         <tr ng-repeat="vm in result.requestedVms">
             <td>{{ vms[vm].name }}</td>
+            <td><button ng-click="cancel_start(vm);">Cancel</button></td>
         </tr>
     </table>
 
@@ -122,6 +123,18 @@
             });
         };
 
+        $scope.cancel_start = function(vm) {
+            $http({
+                method: 'POST',
+                url: cfg["baseurl"]+clusterid+"/cancel",
+                headers: {"Content-Type": "application/json",
+                          "Accept": "application/json"},
+                data: {id: vm}
+            }).success(function (data) {
+                $scope.valid = "Waiting for updated solution."
+            });
+        };
+
         $scope.refresh = function() {
             if ($scope.frozen) {
                 $scope.verifyData();
@@ -176,9 +189,10 @@
 
             $scope.result.vms.forEach(function (vm) {
                 console.log("Adding mem of vm "+vm+" to host "+$scope.result.vmToHost[vm]);
+                if ($scope.result.vmToHost[vm] == null) return;
                 $scope.hosts[$scope.result.vmToHost[vm]].willusememory += $scope.vms[vm].memory;
             });
-        }
+        };
 
         $scope.verifyData = function() {
             verificationFactory.getResult($scope.result).success(function (data) {
