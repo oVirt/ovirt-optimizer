@@ -53,6 +53,7 @@
         <tr ng-repeat="vm in result.requestedVms">
             <td>{{ vms[vm].name }}</td>
             <td><button ng-click="cancel_start(vm);">Cancel</button></td>
+            <td>{{ vms[vm].status.state }}</td>
         </tr>
     </table>
 
@@ -199,6 +200,10 @@
                     }
                 });
 
+                if (data.hardScore < 0) {
+                    $scope.valid = "Solution is not doable! There are hard constraint violations.";
+                }
+
                 $scope.recomputeResources();
             });
         };
@@ -221,7 +226,7 @@
                 $timeout($scope.refresh, 30000);
                 $scope.verification = data;
                 if (data.hardScore < 0) {
-                    $scope.valid = "Invalid data!";
+                    $scope.valid = "Solution is not doable! There are hard constraint violations.";
                 }
             });
         };
