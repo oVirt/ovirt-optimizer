@@ -61,7 +61,8 @@
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
             <td>{{ vms[vm].name }} &ndash;&gt; {{ hosts[host].name }}</td>
-            <td><button ng-click="migrate(vm, host)">migrate to {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, host)">start on {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, host)">migrate to {{ hosts[host].name }}</button></td>
         </tr>
         </tbody>
     </table>
@@ -77,7 +78,8 @@
         <tr class="vm" ng-repeat="vm in rvms">
             <td>{{ vms[vm].name }}</td>
             <td>{{ vms[vm].memory_policy.guaranteed }} (max {{ vms[vm].memory }})</td>
-            <td ng-if="result.vmToHost[vm] != result.currentVmToHost[vm]"><button ng-click="migrate(vm, result.vmToHost[vm])">migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, result.vmToHost[vm])">start here</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, result.vmToHost[vm])">migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
         </tr>
         </tbody>
@@ -118,6 +120,26 @@
                           "Accept": "application/json"},
                 data: {host: {id: host},
                        async: true}
+            }).success(function (data) {
+
+            });
+        };
+
+        $scope.start = function(vm, host) {
+            console.log("Initiating start of vm "+vm+" on host "+host);
+            $http({
+                method: 'POST',
+                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/start",
+                headers: {"Content-Type": "application/json",
+                          "Accept": "application/json"},
+                data: {
+                    vm: {
+                        placement_policy: {
+                            host: {id: host}
+                        }
+                    },
+                    async: true
+                }
             }).success(function (data) {
 
             });
