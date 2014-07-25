@@ -24,7 +24,7 @@
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -42,12 +42,14 @@ BuildRequires:	unzip
 
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
-Requires:       resteasy
-Requires:       jackson
-Requires:       slf4j
+
+%if 0%{?rhel} && 0%{?rhel} < 7
 Requires:       quartz
-Requires:       ovirt-engine-sdk-java >= 3.5.0.2
 Requires:       protobuf-java >= 2.5
+%endif
+
+Requires:       slf4j
+Requires:       ovirt-engine-sdk-java >= 3.5.0.2
 
 %description
 %{name} service collects data from the oVirt engine and proposes
@@ -78,8 +80,9 @@ application server.
 Summary:       Integration of the optimization service to Jetty 9.
 Requires:      %{name} = %{version}
 Requires:      jetty >= 9
-#Requires:      weld-api >= 2.1.2
 Requires:      cdi-api
+Requires:      resteasy
+Requires:      jackson
 
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
@@ -125,16 +128,24 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_javadir}/httpcomponents/httpcore.jar
 %{_javadir}/httpcomponents/httpclient.jar
 %{_javadir}/ovirt-engine-sdk-java/ovirt-engine-sdk-java.jar
+%if 0%{?fedora} || 0%{?rhel} >= 7
 %{_javadir}/protobuf.jar
 %{_javadir}/quartz.jar
+%endif
 %{_javadir}/xpp3-minimal.jar"
 
 JBOSS_BUNDLE="target/lib/drools-*
 target/lib/kie-*
 target/lib/optaplanner-*
+%if 0%{?rhel} && 0%{?rhel} < 7
+target/lib/quartz-*
+target/lib/protobuf-java-*
+%endif
 target/lib/mvel2-*
 target/lib/xmlpull-*
 target/lib/xstream-*"
+
+
 
 %if 0%{?with_jboss}
 
@@ -145,7 +156,7 @@ cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss7.war
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
 
 # Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
+echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
 
 # Symlink it to Jboss war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jboss_deployments}
@@ -209,8 +220,8 @@ echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}
 echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
 # Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jetty.war/WEB-INF/lib
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
-echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "mv -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
+echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
+echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
 # Symlink it to Jetty war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jetty_deployments}
@@ -270,6 +281,9 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Fri Jul 25 2014 Martin Sivak <msivak@redhat.com> 0.2-2
+- Bundle some jars for CentOS6
+
 * Fri Jun 27 2014 Martin Sivak <msivak@redhat.com> 0.2-1
 - Support for CPU cores and threads
 - Support for VM start optimization
