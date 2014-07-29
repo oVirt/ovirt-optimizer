@@ -51,8 +51,8 @@ public class OvirtClient {
 
     public Api connect()
             throws UnsecuredConnectionAttemptError, ServerException, IOException {
-        String url = String.format("http://%s:%s/ovirt-engine/api", server, port);
+        String url = String.format("https://%s:%s/ovirt-engine/api", server, port);
         log.debug(String.format("Logging to %s as %s", url, username));
-        return new Api(url, username, password, false);
+        return new Api(url, username, password, true);
     }
 }
