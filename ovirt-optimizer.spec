@@ -3,17 +3,17 @@
 %global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %global jetty_deployments %{_datadir}/jetty/webapps
 
-%if 0%{?rhel} < 7
+%if 0%{?rhel} && 0%{?rhel} < 7
 %global with_jetty 0
 %global with_jboss 1
 %endif
 
-%if 0%{?fedora} < 20
+%if 0%{?fedora} && 0%{?fedora} < 20
 %global with_jboss 1
 %global with_jetty 1
 %endif
 
-%if 0%{?fedora} >= 20
+%if 0%{?fedora} && 0%{?fedora} >= 20
 %global with_jboss 0
 %global with_jetty 1
 %endif
@@ -43,7 +43,7 @@ BuildRequires:	unzip
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
 
-%if 0%{?rhel} && 0%{?rhel} < 7
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires:       quartz
 Requires:       protobuf-java >= 2.5
 %endif
