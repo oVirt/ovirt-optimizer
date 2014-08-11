@@ -19,12 +19,12 @@
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.2
+%define project_version 0.3
 %{!?_version: %define _version %{project_version}}
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	2%{?dist}
+Release:	1%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -281,6 +281,12 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Mon Aug 11 2014 Martin Sivak <msivak@redhat.com> 0.3-1
+- Fixed Fedora/RHEL conditionals
+  Related: rhbz#1124264
+- Configuration allows http vs. https configuration for SDK
+  Resolves: rhbz#1124326
+
 * Fri Jul 25 2014 Martin Sivak <msivak@redhat.com> 0.2-2
 - Bundle some jars for CentOS6
 
