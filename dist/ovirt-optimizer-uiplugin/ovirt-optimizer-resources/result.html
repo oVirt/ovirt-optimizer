@@ -7,13 +7,12 @@
             window.location.reload(true);
         }
     </script>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
-    <script src="ovirtsdk.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lodash.js/2.4.1/lodash.min.js"></script>
 
     <!-- Compatibility hacks
      according to https://docs.angularjs.org/guide/ie //-->
     <!--[if lte IE 7]>
-    <script src="http://cdnjs.cloudflare.com/ajax/libs/json2/20130526/json2.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/json2/20130526/json2.min.js"></script>
     <![endif]-->
     <!--[if lte IE 8]>
     <script>
@@ -116,7 +115,7 @@
             console.log("Initiating migration of vm "+vm+" to host "+host);
             $http({
                 method: 'POST',
-                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/migrate",
+                url: window.parent.location.protocol + "//"+ window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/migrate",
                 headers: {"Content-Type": "application/json",
                           "Accept": "application/json"},
                 data: {host: {id: host},
@@ -130,7 +129,7 @@
             console.log("Initiating start of vm "+vm+" on host "+host);
             $http({
                 method: 'POST',
-                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/start",
+                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/start",
                 headers: {"Content-Type": "application/json",
                           "Accept": "application/json"},
                 data: {
@@ -263,7 +262,7 @@
         factory.getResult = function() {
             console.log("http://"+window.parent.location.host + "/ovirt-engine/api/hosts");
             return $http({method: 'GET',
-                url: "http://"+window.parent.location.host + "/ovirt-engine/api/hosts",
+                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/hosts",
                 headers: {"Accept": "application/json"}});
         };
         return factory;
@@ -273,7 +272,7 @@
         var factory = {};
         factory.getResult = function() {
             return $http({method: 'GET',
-                url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms",
+                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/vms",
                 headers: {"Accept": "application/json"}});
         };
         return factory;
