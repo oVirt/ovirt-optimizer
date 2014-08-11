@@ -31,6 +31,7 @@ public class OvirtClient {
     static private Logger log = LoggerFactory.getLogger(OvirtClient.class);
 
     String server;
+    String protocol;
     String port;
     String username;
     String password;
@@ -43,6 +44,7 @@ public class OvirtClient {
         config = new ConfigProvider().load().getConfig();
 
         this.server = config.getProperty(ConfigProvider.SDK_SERVER);
+        this.protocol = config.getProperty(ConfigProvider.SDK_PROTOCOL);
         this.port = config.getProperty(ConfigProvider.SDK_PORT);
         this.username = config.getProperty(ConfigProvider.SDK_USERNAME);
         this.password = config.getProperty(ConfigProvider.SDK_PASSWORD);
@@ -51,7 +53,7 @@ public class OvirtClient {
 
     public Api connect()
             throws UnsecuredConnectionAttemptError, ServerException, IOException {
-        String url = String.format("https://%s:%s/ovirt-engine/api", server, port);
+        String url = String.format("%s://%s:%s/ovirt-engine/api", protocol, server, port);
         log.debug(String.format("Logging to %s as %s", url, username));
         return new Api(url, username, password, true);
     }

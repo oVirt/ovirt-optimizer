@@ -11,6 +11,7 @@ public class ConfigProvider {
 
     public static final String SDK_SERVER = "org.ovirt.optimizer.sdk.server";
     public static final String SDK_PORT = "org.ovirt.optimizer.sdk.port";
+    public static final String SDK_PROTOCOL = "org.ovirt.optimizer.sdk.protocol";
     public static final String SDK_USERNAME = "org.ovirt.optimizer.sdk.username";
     public static final String SDK_PASSWORD = "org.ovirt.optimizer.sdk.password";
     public static final String SDK_CA_STORE = "org.ovirt.optimizer.sdk.ca.store";
@@ -29,6 +30,7 @@ public class ConfigProvider {
         }
 
         config.setProperty(SDK_SERVER, "localhost");
+        config.setProperty(SDK_PROTOCOL, "http");
         config.setProperty(SDK_PORT, "8080");
         config.setProperty(SDK_USERNAME, "admin@internal");
         config.setProperty(SDK_PASSWORD, "letmein");
