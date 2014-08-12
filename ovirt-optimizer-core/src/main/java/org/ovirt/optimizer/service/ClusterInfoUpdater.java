@@ -88,7 +88,7 @@ public class ClusterInfoUpdater implements Runnable {
                     }
                 }
 
-                for (Network network: engine.getNetworks().list()) {
+                for (Network network: clusterInstance.getNetworks().list()) {
                     if (network.getDataCenter() != null
                             && network.getDataCenter().getId().equals(clusterInstance.getDataCenter().getId())) {
                         log.debug(String.format("Discovered Network %s (%s) on cluster %s [datacenter %s]",
