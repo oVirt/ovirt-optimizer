@@ -123,10 +123,12 @@
         <thead>
         <tr>
             <th class="object-name">host</th>
+            <th class="object-name">vm</th>
             <th colspan="2" class="memory-gauge">memory [all in GB]</th>
             <th>&nbsp;</th>
         </tr>
         <tr>
+            <th>&nbsp;</th>
             <th>&nbsp;</th>
             <th>used</th>
             <th>available</th>
@@ -136,11 +138,13 @@
         <tbody ng-repeat="(host, rvms) in result.hostToVms">
         <tr class="host">
             <td><i class="fa fa-cubes"></i> {{ hosts[host].name }}</td>
+            <td>&nbsp;</td>
             <td>{{ hosts[host].willusememory / gb | number : 1 }}</td>
             <td>{{ hosts[host].memory / gb | number : 1 }}</td>
             <td></td>
         </tr>
         <tr class="vm" ng-repeat="vm in rvms">
+            <td>&nbsp;</td>
             <td><i class="fa fa-desktop"></i> {{ vms[vm].name }}</td>
             <td>{{ vms[vm].memory_policy.guaranteed / gb | number : 1 }}</td>
             <td>{{ vms[vm].memory / gb | number : 1 }}</td>
@@ -149,9 +153,8 @@
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
         </tr>
         <tr class="vm empty" ng-hide="rvms.length">
-            <td title="This host has no VMs.">&ndash;</td>
             <td>&nbsp;</td>
-            <td>&nbsp;</td>
+            <td colspan="3">This host has no VMs.</td>
         </tr>
         </tbody>
     </table>
