@@ -26,64 +26,136 @@
         document.createElement('ng:view');
     </script>
     <![endif]-->
+    <link href="//maxcdn.bootstrapcdn.com/font-awesome/4.1.0/css/font-awesome.min.css" rel="stylesheet">
+
     <style>
         .host { font-weight: bold; }
-        .ng-cloak, [ng-cloak].splash {
+
+        .ng-cloak .splash, [ng-cloak] .splash {
             display: block !important;
         }
+
         .splash {
             display: none !important;
+        }
+
+        td, th {
+            padding: 0.2em 1em;
+        }
+
+        thead {
+            background-color: #f0f2ff;
+            border-bottom: solid 1px #e3edf6;
+        }
+
+        tr.host {
+            background-color: lightcyan;
+            border-bottom: solid 1px #e3edf6;
+        }
+
+        h2 {
+            width: 97%;
+            color: white;
+            background-color: #5c5c5c;
+            padding: 0.2ex 1em;
+            font-size: smaller;
+            text-transform: uppercase;
+        }
+
+        .object-name {
+            min-width: 15ex;
+        }
+
+        .state-down:before {
+            color: red;
+            content: "";
+        }
+
+        .state-up:before {
+            color: green;
+            content: "";
+        }
+
+        .state-powering_up,
+        .state-wait_for_launch {
+            color: navy;
+            content: "";
         }
     </style>
 </head>
 <body>
 
-<div class="splash">Loading..</div>
-
 <div ng-cloak class="ng-cloak" ng-controller="resultController">
+    <div class="splash"><i class="fa fa-3x fa-spin fa-cog"></i>Loading..</div>
 
-    <p>Status: {{ valid }}</p>
+    <h2>Solution status</h2>
+    <p><i class="fa fa-info-circle"></i> Status: {{ valid }}</p>
+    <p ng-show="!frozen"><i class="fa fa-refresh fa-spin"></i> Solution is being refreshed every 30 seconds.</p>
+    <p ng-show="frozen"><i class="fa fa-stop"></i> Solution is frozen.</p>
 
-    <button ng-click="frozen=true">Freeze solution</button>
-    <button ng-click="frozen=false">Unfreeze solution</button>
+    <button ng-show="!frozen" ng-click="frozen=true"><i class="fa fa-stop"></i> Freeze solution</button>
+    <button ng-show="frozen" ng-click="frozen=false"><i class="fa fa-play"></i> Unfreeze solution</button>
 
     <h2>VMs that should be started</h2>
     <table>
         <tr ng-repeat="vm in result.requestedVms">
             <td>{{ vms[vm].name }}</td>
-            <td><button ng-click="cancel_start(vm);">Cancel</button></td>
-            <td>{{ vms[vm].status.state }}</td>
+            <td><button ng-click="cancel_start(vm);"><i class="fa fa-times"></i> Cancel</button></td>
+            <td><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
         </tr>
     </table>
+    <p ng-hide="result.requestedVms.length">No VM starts are requested at this moment.</p>
 
-    <h2>Migration/Start steps</h2>
+    <h2>Migration / Start steps</h2>
     <table>
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
-            <td>{{ vms[vm].name }} &ndash;&gt; {{ hosts[host].name }}</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, host)">start on {{ hosts[host].name }}</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, host)">migrate to {{ hosts[host].name }}</button></td>
+            <td>{{ vms[vm].name }} &rarr; {{ hosts[host].name }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, host)"><i class="fa fa-play"></i> start on {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, host)"><i class="fa fa-forward"></i> migrate to {{ hosts[host].name }}</button></td>
         </tr>
         </tbody>
     </table>
+    <p ng-hide="result.migrations.length">No migrations are needed at this moment. The state is stable.</p>
 
-    <h2>Desired state</h2>
-    <table>
+    <h2>Target state</h2>
+    <table ng-hide="_.isEmpty(result.hostToVms)">
+        <thead>
+        <tr>
+            <th class="object-name">host</th>
+            <th colspan="2" class="memory-gauge">memory [all in GB]</th>
+            <th>&nbsp;</th>
+        </tr>
+        <tr>
+            <th>&nbsp;</th>
+            <th>used</th>
+            <th>available</th>
+            <th>&nbsp;</th>
+        </tr>
+        </thead>
         <tbody ng-repeat="(host, rvms) in result.hostToVms">
         <tr class="host">
-            <td>{{ hosts[host].name }}</td>
-            <td>{{ hosts[host].willusememory }} out of {{ hosts[host].memory }}</td>
+            <td><i class="fa fa-cubes"></i> {{ hosts[host].name }}</td>
+            <td>{{ hosts[host].willusememory / gb | number : 1 }}</td>
+            <td>{{ hosts[host].memory / gb | number : 1 }}</td>
             <td></td>
         </tr>
         <tr class="vm" ng-repeat="vm in rvms">
-            <td>{{ vms[vm].name }}</td>
-            <td>{{ vms[vm].memory_policy.guaranteed }} (max {{ vms[vm].memory }})</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, result.vmToHost[vm])">start here</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, result.vmToHost[vm])">migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
+            <td><i class="fa fa-desktop"></i> {{ vms[vm].name }}</td>
+            <td>{{ vms[vm].memory_policy.guaranteed / gb | number : 1 }}</td>
+            <td>{{ vms[vm].memory / gb | number : 1 }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, result.vmToHost[vm])"><i class="fa fa-play"></i> start here</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, result.vmToHost[vm])"><i class="fa fa-fast-forward"></i> migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
+        </tr>
+        <tr class="vm empty" ng-hide="rvms.length">
+            <td title="This host has no VMs.">&ndash;</td>
+            <td>&nbsp;</td>
+            <td>&nbsp;</td>
         </tr>
         </tbody>
     </table>
+    <p ng-show="_.isEmpty(result.hostToVms)">This cluster has no hosts.</p>
 
     <!--
     <p>Raw data: {{ result }}</p>
@@ -110,6 +182,7 @@
         $scope.frozen = false;
         $scope.hosts = {};
         $scope.vms = {};
+        $scope.gb = 1024 * 1024 * 1024;
 
         $scope.migrate = function(vm, host) {
             console.log("Initiating migration of vm "+vm+" to host "+host);
