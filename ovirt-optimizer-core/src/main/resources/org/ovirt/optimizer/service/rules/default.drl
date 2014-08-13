@@ -24,7 +24,7 @@ as the data source does sometimes return the same object as two different instan
 rule "hardScoreTemplate"
     when
         // Remove the destination var if the move can violate hard constraints on the source host
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($memory: memory, $step.finalStep == true || id == $destination.id)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
                 $vm : VM($vmId : id,
@@ -58,34 +58,34 @@ end
 // memory for all the VMs
 rule "notEnoughGuaranteedMemory"
     when
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
-        $host: Host($memory: maxSchedulingMemory / (1024*1024), $step.finalStep == true || id == $destination.id)
-        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
+        $host: Host($step.finalStep == true || id == $destination.id, $memory: memory)
+        $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
                 VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
                          $requiredMemory : memoryPolicy.guaranteed)
-                         and exists RunningVm(id == $vmId),
-                sum($requiredMemory / (1024*1024))
+                     and exists RunningVm(id == $vmId),
+                sum($requiredMemory)
         )
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+        scoreHolder.addHardConstraintMatch(kcontext, (int)(($memory - $requiredMemoryTotal.longValue()) / (1024*1024)));
 end
 
 // Check whether the host has enough memory to hold all the VMs while
 // taking overcommitment into account
 rule "notEnoughMemory"
     when
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination : destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $memory: (maxSchedulingMemory + maxSchedulingMemory * cluster.memoryPolicy.overCommit.percent) / (1024*1024))
-        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
+        $host: Host($step.finalStep == true || id == $destination.id, $memory: (memory * 100 + memory * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
+        $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
                 VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
                          $requiredMemory : memory)
                     and exists RunningVm(id == $vmId),
-                sum($requiredMemory / (1024*1024))
+                sum($requiredMemory)
         )
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+        scoreHolder.addHardConstraintMatch(kcontext, (int)(($memory - $requiredMemoryTotal.intValue()) / (1024*1024)));
 end
 
 // CpuLevelFilterPolicyUnit
@@ -94,36 +94,35 @@ end
 rule "notEnoughCores"
     when
         not(exists CountThreadsAsCores())
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
                     cpu.topology != null, $cores: cpu.topology.cores != null)
-        $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
-                $vm : VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
-                         cpu.topology != null,
-                         $requiredCpus : cpu.topology.cores != null)
-                  and exists RunningVm(id == $vmId),
-                sum($requiredCpus)
-        )
+        $vm : VM($vmId : id,
+                 $step.getAssignment($vmId) == $host.id,
+                 cpu.topology != null,
+                 $requiredCpus : cpu.topology.cores,
+                 $requiredCpus != null,
+                 $requiredCpus > $cores)
+        exists RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpuCoresTotal.intValue());
+        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpus);
 end
 
 rule "notEnoughThreads"
     when
         exists CountThreadsAsCores()
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
-                    cpu.topology != null, $cores: cpu.topology.threads != null)
-        $requiredCpuCoresTotal : Number(intValue > $cores) from accumulate(
-                $vm : VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
-                         $requiredCpus : cpu.topology.cores)
-                and exists RunningVm(id == $vmId),
-                sum($requiredCpus)
-        )
+                    cpu.topology != null, $cores: cpu.topology.threads, $cores != null)
+        $vm : VM($vmId : id,
+                 $step.getAssignment($vmId) == $host.id,
+                 cpu.topology != null,
+                 $requiredCpus : cpu.topology.cores,
+                 $requiredCpus != null,
+                 $requiredCpus > $cores)
+        exists RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpuCoresTotal.intValue());
+        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpus);
 end
 
 
@@ -135,7 +134,7 @@ end
 // TODO NetworkPolicyUnit
 rule "checkRequiredDisplayNetworks"
     when
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm: VM($vmId : id,
            $step.getAssignment($vmId) == $host.id)
@@ -152,7 +151,7 @@ end
 // PinToHostPolicyUnit
 rule "pinToHost"
     when
-        $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+        $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm : VM($vmId : id,
                  $step.getAssignment($vmId) == $host.id,
@@ -168,7 +167,7 @@ end
 
 // Additional rules
 
-// Ensure all VMs are assigned
+// Ensure all VMs are assigned as soon as possible
 rule "ensureVmRunning"
     when
         $step: Migration(finalStep == true)
@@ -176,7 +175,17 @@ rule "ensureVmRunning"
                 $step.getAssignment($vmId) == null)
         RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, -100);
+        scoreHolder.addHardConstraintMatch(kcontext, -10000);
+end
+
+rule "ensureVmRunningEarly"
+    when
+        $step: Migration(destination != null && vm != null)
+        $vm: VM($vmId : id,
+                $step.getAssignment($vmId) == null)
+        RunningVm(id == $vmId)
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -1);
 end
 
 // Test rules

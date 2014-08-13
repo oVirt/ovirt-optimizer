@@ -18,18 +18,18 @@
 
     <daemon>true</daemon>
 
+    <termination>
+        <unimprovedMillisecondsSpentLimit>30000</unimprovedMillisecondsSpentLimit>
+    </termination>
+
     <localSearch>
         <acceptor>
-            <entityTabuSize>7</entityTabuSize>
+            <entityTabuRatio>0.02</entityTabuRatio>
         </acceptor>
 
         <forager>
             <acceptedCountLimit>1000</acceptedCountLimit>
         </forager>
-
-        <termination>
-            <unimprovedMillisecondsSpentLimit>10000</unimprovedMillisecondsSpentLimit>
-        </termination>
 
         <unionMoveSelector>
             <changeMoveSelector>
