@@ -10,6 +10,7 @@ import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
 import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -34,11 +35,13 @@ public class ClusterInfoUpdater implements Runnable {
     Set<ClusterUpdateAvailable> handlers;
     volatile boolean running = true;
     OvirtClient ovirtClient;
+    ConfigProvider configProvider;
 
-    public ClusterInfoUpdater(OvirtClient client, String clusterId) {
+    public ClusterInfoUpdater(OvirtClient client, ConfigProvider configProvider, String clusterId) {
         this.clusterId = clusterId;
         this.handlers = new HashSet<>();
         this.ovirtClient = client;
+        this.configProvider = configProvider;
     }
 
     public String getClusterId() {
@@ -49,6 +52,8 @@ public class ClusterInfoUpdater implements Runnable {
     public void run() {
         log.info(String.format("Updater thread for %s starting", clusterId));
         while (running) {
+            int refresh = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_DATA_REFRESH));
+
             Set<Host> hosts = new HashSet<>();
             Set<String> hostIds = new HashSet<>();
             Set<VM> vms = new HashSet<>();
@@ -125,7 +130,7 @@ public class ClusterInfoUpdater implements Runnable {
             try {
                 synchronized (this) {
                     if (running) {
-                        this.wait(30000);
+                        this.wait(refresh * 1000);
                     }
                 }
             } catch(InterruptedException ex) {

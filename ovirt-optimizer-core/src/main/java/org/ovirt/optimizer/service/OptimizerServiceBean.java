@@ -48,6 +48,9 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     @Inject
     OvirtClient client;
 
+    @Inject
+    ConfigProvider configProvider;
+
     SchedulerService.Timer discoveryTimer;
     Set<Thread> threads;
 
@@ -59,7 +62,8 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public void create() {
         log.info("oVirt optimizer service starting");
         threads = new HashSet<>();
-        discoveryTimer = scheduler.createTimer(120, DiscoveryTimeout.class);
+        int refresh = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
+        discoveryTimer = scheduler.createTimer(refresh, DiscoveryTimeout.class);
     }
 
     // Synchronized should not be needed, but is here as a
@@ -95,7 +99,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         for (String clusterId: availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
 
-            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client, clusterId, maxSteps, new ClusterOptimizer.Finished() {
+            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client, configProvider, clusterId, maxSteps, new ClusterOptimizer.Finished() {
                 @Override
                 public void solvingFinished(ClusterOptimizer planner, Thread thread) {
                     threads.remove(thread);

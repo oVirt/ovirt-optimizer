@@ -17,6 +17,10 @@ public class ConfigProvider {
     public static final String SDK_CA_STORE = "org.ovirt.optimizer.sdk.ca.store";
 
     public static final String SOLVER_STEPS = "org.ovirt.optimizer.solver.steps";
+    public static final String SOLVER_TIMEOUT = "org.ovirt.optimizer.solver.timeout";
+    public static final String SOLVER_DATA_REFRESH = "org.ovirt.optimizer.solver.data.refresh";
+    public static final String SOLVER_CLUSTER_REFRESH = "org.ovirt.optimizer.solver.cluster.refresh";
+
 
     private String configFile;
     private Properties config;
@@ -36,6 +40,9 @@ public class ConfigProvider {
         config.setProperty(SDK_PASSWORD, "letmein");
         config.setProperty(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
         config.setProperty(SOLVER_STEPS, "10");
+        config.setProperty(SOLVER_TIMEOUT, "30");
+        config.setProperty(SOLVER_DATA_REFRESH, "60");
+        config.setProperty(SOLVER_CLUSTER_REFRESH, "300");
     }
 
     public ConfigProvider load() {

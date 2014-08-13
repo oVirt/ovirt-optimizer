@@ -7,6 +7,8 @@ import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
 import org.optaplanner.core.api.solver.event.BestSolutionChangedEvent;
 import org.optaplanner.core.api.solver.event.SolverEventListener;
+import org.optaplanner.core.config.solver.SolverConfig;
+import org.optaplanner.core.config.solver.termination.TerminationConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
@@ -16,6 +18,7 @@ import org.ovirt.optimizer.service.problemspace.ClusterSituation;
 import org.ovirt.optimizer.service.problemspace.EnsureVmRunningFactChange;
 import org.ovirt.optimizer.service.problemspace.Migration;
 import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
+import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,27 +149,25 @@ public class ClusterOptimizer implements Runnable {
         }
     }
 
-    public static ClusterOptimizer optimizeCluster(OvirtClient client, final String clusterId, int maxSteps, Finished finishedCallback) {
-        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, finishedCallback);
-        ClusterInfoUpdater updater = new ClusterInfoUpdater(client, clusterId);
+    public static ClusterOptimizer optimizeCluster(OvirtClient client, ConfigProvider configProvider, final String clusterId, int maxSteps, Finished finishedCallback) {
+        long timeout = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT)) * 1000;
+        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout, finishedCallback);
+        ClusterInfoUpdater updater = new ClusterInfoUpdater(client, configProvider, clusterId);
         optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));
         return optimizer;
     }
 
-    public ClusterOptimizer optimizeVmStart(String vmUuid, Finished finishedCallback) {
-        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, bestSolution.getSteps().size(), finishedCallback);
-        optimizer.getBestSolution().getFixedFacts().add(new RunningVm(vmUuid));
-        optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));
-        return optimizer;
-    }
-
-    private ClusterOptimizer(final String clusterId, int maxSteps, Finished finishedCallback) {
+    private ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit, Finished finishedCallback) {
         this.clusterId = clusterId;
         this.finishedCallback = finishedCallback;
 
         SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/solver.xml");
+        SolverConfig solverConfig = solverFactory.getSolverConfig();
+        TerminationConfig terminationConfig = solverConfig.getTerminationConfig();
+        terminationConfig.setUnimprovedMillisecondsSpentLimit(unimprovedMilisLimit);
 
         solver = solverFactory.buildSolver();
+
         solver.addEventListener(new SolverEventListener() {
             @Override
             public void bestSolutionChanged(BestSolutionChangedEvent bestSolutionChangedEvent) {
