@@ -59,15 +59,17 @@ end
 // MemoryPolicyUnit
 // Check whether host has enough memory to hold just the guaranteed
 // memory for all the VMs
+// TODO until REST is updated remove 256 MB from hosts memory as reserved, 65 MB as extra reserved
+//      and consider 65 MB as per guest overhead
 rule "notEnoughGuaranteedMemory"
     when
         PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $memory: memory)
+        $host: Host($step.finalStep == true || id == $destination.id, $memory: memory - 256 - 65)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
                 VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memoryPolicy.guaranteed)
+                         $requiredMemory : memoryPolicy.guaranteed + 65)
                      and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
         )
@@ -77,15 +79,18 @@ end
 
 // Check whether the host has enough memory to hold all the VMs while
 // taking overcommitment into account
+// TODO until REST is updated remove 256 MB from hosts memory as reserved, 65 MB as extra reserved
+//      and consider 65 MB as per guest overhead
 rule "notEnoughMemory"
     when
         PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
-        $host: Host($step.finalStep == true || id == $destination.id, $memory: (memory * 100 + memory * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
+        $host: Host($step.finalStep == true || id == $destination.id,
+                    $memory: ((memory - 256 - 65) * 100 + (memory - 256 - 65) * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
                 VM($vmId : id,
                          $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memory)
+                         $requiredMemory : memory + 65)
                     and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
         )
