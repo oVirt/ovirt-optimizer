@@ -11,6 +11,7 @@ import org.ovirt.optimizer.util.RuleLogger;
 
 import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.facts.CountThreadsAsCores;
+import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
 
 global HardSoftScoreHolder scoreHolder;
 
@@ -23,6 +24,7 @@ as the data source does sometimes return the same object as two different instan
 
 rule "hardScoreTemplate"
     when
+        PolicyUnitEnabled(uuid == "xxx-xxx")
         // Remove the destination var if the move can violate hard constraints on the source host
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($memory: memory, $step.finalStep == true || id == $destination.id)
@@ -39,6 +41,7 @@ end
 
 rule "softScoreTemplate"
     when
+        PolicyUnitEnabled(uuid == "xxx-xxx", $factor : factor)
         $finalStep: Migration(finalStep == true)
         $host: Host($memory: memory)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
@@ -49,7 +52,7 @@ rule "softScoreTemplate"
                 sum($requiredMemory)
         )
     then
-        scoreHolder.addSoftConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+        scoreHolder.addSoftConstraintMatch(kcontext, $factor * ($memory.intValue() - $requiredMemoryTotal.intValue()));
 end
 */
 
@@ -58,6 +61,7 @@ end
 // memory for all the VMs
 rule "notEnoughGuaranteedMemory"
     when
+        PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id, $memory: memory)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
@@ -75,6 +79,7 @@ end
 // taking overcommitment into account
 rule "notEnoughMemory"
     when
+        PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id, $memory: (memory * 100 + memory * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
@@ -93,6 +98,7 @@ end
 /* Compare the number of cores */
 rule "notEnoughCores"
     when
+        PolicyUnitEnabled(uuid == "6d636bf6-a35c-4f9d-b68d-0731f720cddc")
         not(exists CountThreadsAsCores())
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
@@ -110,6 +116,7 @@ end
 
 rule "notEnoughThreads"
     when
+        PolicyUnitEnabled(uuid == "6d636bf6-a35c-4f9d-b68d-0731f720cddc")
         exists CountThreadsAsCores()
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
@@ -134,6 +141,7 @@ end
 // TODO NetworkPolicyUnit
 rule "checkRequiredDisplayNetworks"
     when
+        PolicyUnitEnabled(uuid == "72163d1c-9468-4480-99d9-0888664eb143")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm: VM($vmId : id,
@@ -151,6 +159,7 @@ end
 // PinToHostPolicyUnit
 rule "pinToHost"
     when
+        PolicyUnitEnabled(uuid == "12262ab6-9690-4bc3-a2b3-35573b172d54")
         $step: Migration((destination != null && vm != null) || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm : VM($vmId : id,
