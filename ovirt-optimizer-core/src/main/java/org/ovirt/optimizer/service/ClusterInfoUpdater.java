@@ -3,12 +3,18 @@ package org.ovirt.optimizer.service;
 import org.apache.http.conn.HttpHostConnectException;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.decorators.Cluster;
+import org.ovirt.engine.sdk.decorators.SchedulingPolicy;
+import org.ovirt.engine.sdk.decorators.SchedulingPolicyBalance;
+import org.ovirt.engine.sdk.decorators.SchedulingPolicyFilter;
+import org.ovirt.engine.sdk.decorators.SchedulingPolicyWeight;
+import org.ovirt.engine.sdk.decorators.SchedulingPolicyWeights;
 import org.ovirt.engine.sdk.entities.DataCenter;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
@@ -62,7 +68,7 @@ public class ClusterInfoUpdater implements Runnable {
             try {
                 Api engine = ovirtClient.connect();
 
-                Cluster clusterInstance = engine.getClusters().get(UUID.fromString(clusterId));
+                Cluster clusterInstance = engine.getClusters().getById(clusterId);
                 DataCenter dataCenter = clusterInstance.getDataCenter();
 
                 for (Host host: engine.getHosts().list()) {
@@ -100,6 +106,26 @@ public class ClusterInfoUpdater implements Runnable {
                                 network.getName(), network.getId(), clusterInstance.getId(), dataCenter.getId()));
                         facts.add(network);
                     }
+                }
+
+                String schedulingPolicyId = clusterInstance.getSchedulingPolicy().getId();
+                SchedulingPolicy schedulingPolicy = engine.getSchedulingPolicies().getById(schedulingPolicyId);
+                for (SchedulingPolicyWeight weight: schedulingPolicy.getWeights().list()) {
+                    log.debug("Found policy unit weight {} with factor {}", weight.getId(), weight.getFactor());
+                    PolicyUnitEnabled policyUnitEnabled = new PolicyUnitEnabled(weight.getId(), weight.getFactor());
+                    facts.add(policyUnitEnabled);
+                }
+
+                for (SchedulingPolicyFilter filter: schedulingPolicy.getFilters().list()) {
+                    log.debug("Found policy unit filter {}", filter.getId());
+                    PolicyUnitEnabled policyUnitEnabled = new PolicyUnitEnabled(filter.getId(), 1);
+                    facts.add(policyUnitEnabled);
+                }
+
+                for (SchedulingPolicyBalance balance: schedulingPolicy.getBalances().list()) {
+                    log.debug("Found policy unit balancer {}", balance.getId());
+                    PolicyUnitEnabled policyUnitEnabled = new PolicyUnitEnabled(balance.getId(), 1);
+                    facts.add(policyUnitEnabled);
                 }
 
             } catch (ConnectException ex) {
