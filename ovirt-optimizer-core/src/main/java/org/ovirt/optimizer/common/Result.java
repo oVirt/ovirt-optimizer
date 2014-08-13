@@ -22,6 +22,7 @@ public class Result implements Serializable {
     int softScore;
     int hardScore;
 
+    public Result() {}
     public Result(String cluster) {
         this.cluster = cluster;
     }
