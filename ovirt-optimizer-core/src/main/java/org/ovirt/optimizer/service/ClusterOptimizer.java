@@ -69,7 +69,7 @@ public class ClusterOptimizer implements Runnable {
         solution.setHosts(sourceSolution.getHosts());
         solution.setVms(sourceSolution.getVms());
         solution.setOtherFacts(sourceSolution.getOtherFacts());
-        solution.setFixedFacts(new HashSet<Object>());
+        solution.setFixedFacts(sourceSolution.getFixedFacts());
 
         /* Get id to object mappings for hosts and VMs */
         Map<String, Host> hosts = new HashMap<>();
