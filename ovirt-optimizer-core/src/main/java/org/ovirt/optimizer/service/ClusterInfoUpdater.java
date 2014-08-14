@@ -11,6 +11,7 @@ import org.ovirt.engine.sdk.decorators.SchedulingPolicyWeights;
 import org.ovirt.engine.sdk.entities.DataCenter;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.Network;
+import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
@@ -128,6 +129,7 @@ public class ClusterInfoUpdater implements Runnable {
                     facts.add(policyUnitEnabled);
                 }
 
+                facts.addAll(schedulingPolicy.getProperties().getProperties());
             } catch (ConnectException ex) {
                 log.error("Cluster update failed", ex);
                 continue;
