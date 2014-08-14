@@ -129,7 +129,10 @@ public class ClusterInfoUpdater implements Runnable {
                     facts.add(policyUnitEnabled);
                 }
 
-                facts.addAll(schedulingPolicy.getProperties().getProperties());
+                if (schedulingPolicy.getProperties() != null
+                        && schedulingPolicy.getProperties().getProperties() != null) {
+                    facts.addAll(schedulingPolicy.getProperties().getProperties());
+                }
             } catch (ConnectException ex) {
                 log.error("Cluster update failed", ex);
                 continue;
