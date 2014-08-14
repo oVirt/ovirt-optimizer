@@ -81,6 +81,36 @@
             color: navy;
             content: "";
         }
+
+        .status-icon.ok:before {
+            color: green;
+            content: "";
+        }
+
+        .status-icon.waiting:before {
+            content: "";
+            color: navy;
+        }
+
+        .status-icon.not-doable:before {
+            content: "";
+            color: orange;
+        }
+
+        .status-icon.warning:before {
+            color: orange;
+            content: "";
+        }
+
+        .status-icon.error:before {
+            color: red;
+            content: "";
+        }
+
+        .status-icon.action-error:before {
+            color: red;
+            content: "";
+        }
     </style>
 </head>
 <body>
@@ -89,7 +119,7 @@
     <div class="splash"><i class="fa fa-3x fa-spin fa-cog"></i>Loading..</div>
 
     <h2>Solution status</h2>
-    <p><i class="fa fa-info-circle"></i> Status: {{ valid }}</p>
+    <p><i class="fa status-icon {{ status }}"></i> Status: {{ valid }}</p>
     <p ng-show="!frozen"><i class="fa fa-refresh fa-spin"></i> Solution is being refreshed every 30 seconds.</p>
     <p ng-show="frozen"><i class="fa fa-stop"></i> Solution is frozen.</p>
 
@@ -100,7 +130,7 @@
     <table>
         <tr ng-repeat="vm in result.requestedVms">
             <td>{{ vms[vm].name }}</td>
-            <td><button ng-click="cancel_start(vm);"><i class="fa fa-times"></i> Cancel</button></td>
+            <td><button ng-click="cancel_start(vm, $event);"><i class="fa fa-times"></i> Cancel</button></td>
             <td><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
         </tr>
     </table>
@@ -111,8 +141,11 @@
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
             <td>{{ vms[vm].name }} &rarr; {{ hosts[host].name }}</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, host)"><i class="fa fa-play"></i> start on {{ hosts[host].name }}</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, host)"><i class="fa fa-forward"></i> migrate to {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state == 'down'"><button ng-click="start(vm, host, $event)"><i class="fa fa-play"></i> start on {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state != 'down'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state == 'up'"><button ng-click="migrate(vm, host, $event)"><i class="fa fa-forward"></i> migrate to {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state != 'up'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
         </tr>
         </tbody>
     </table>
@@ -148,8 +181,12 @@
             <td><i class="fa fa-desktop"></i> {{ vms[vm].name }}</td>
             <td>{{ vms[vm].memory_policy.guaranteed / gb | number : 1 }}</td>
             <td>{{ vms[vm].memory / gb | number : 1 }}</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null)"><button ng-click="start(vm, result.vmToHost[vm])"><i class="fa fa-play"></i> start here</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null)"><button ng-click="migrate(vm, result.vmToHost[vm])"><i class="fa fa-fast-forward"></i> migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state == 'down'"><button ng-click="start(vm, result.vmToHost[vm], $event)"><i class="fa fa-play"></i> start here</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state != 'down'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state == 'up'"><button ng-click="migrate(vm, result.vmToHost[vm], $event)"><i class="fa fa-fast-forward"></i> migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state != 'up'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
         </tr>
         <tr class="vm empty" ng-hide="rvms.length">
@@ -177,17 +214,26 @@
     var clusterid = window.location.href.split("#")[1];
     var resultPage = angular.module('resultPage', []);
 
+    function disableButton(button, icon) {
+        button.disabled = true;
+        var icons = angular.element(button).children("i");
+        for (var i = 0; i < icons.length; i++) {
+            angular.element(icons[i]).addClass(icon);
+        }
+    }
+
     resultPage.controller("resultController", function($scope, $timeout, $http, resultFactory,
                                                        verificationFactory, vmsFactory, hostsFactory) {
         $scope.result = {};
         $scope.verification = {};
         $scope.valid = "Waiting for data...";
+        $scope.status = "waiting";
         $scope.frozen = false;
         $scope.hosts = {};
         $scope.vms = {};
         $scope.gb = 1024 * 1024 * 1024;
 
-        $scope.migrate = function(vm, host) {
+        $scope.migrate = function(vm, host, event) {
             console.log("Initiating migration of vm "+vm+" to host "+host);
             $http({
                 method: 'POST',
@@ -197,11 +243,16 @@
                 data: {host: {id: host},
                        async: true}
             }).success(function (data) {
-
+                disableButton(event.target, "fa-check-square");
+                $scope.valid = "Waiting for the migration to start.";
+                $scope.status = "waiting";
+            }).error(function (data, status) {
+                $scope.valid = "Migration start failed ("+status+"): "+data.fault.detail;
+                $scope.status = "action-error";
             });
         };
 
-        $scope.start = function(vm, host) {
+        $scope.start = function(vm, host, event) {
             console.log("Initiating start of vm "+vm+" on host "+host);
             $http({
                 method: 'POST',
@@ -217,11 +268,16 @@
                     async: true
                 }
             }).success(function (data) {
-
+                disableButton(event.target, "fa-check-square");
+                $scope.valid = "Waiting for the VM to start.";
+                $scope.status = "waiting";
+            }).error(function (data, status) {
+                $scope.valid = "VM start failed ("+status+"): "+data.fault.detail;
+                $scope.status = "action-error";
             });
         };
 
-        $scope.cancel_start = function(vm) {
+        $scope.cancel_start = function(vm, event) {
             $http({
                 method: 'POST',
                 url: cfg["baseurl"]+clusterid+"/cancel",
@@ -229,7 +285,12 @@
                           "Accept": "application/json"},
                 data: {id: vm}
             }).success(function (data) {
-                $scope.valid = "Waiting for updated solution."
+                $scope.valid = "Waiting for updated solution.";
+                $scope.status = "waiting";
+                disableButton(event.target, "fa-check-square");
+            }).error(function (data, status) {
+                $scope.valid = "Optimize VM start cancelation failed ("+status+")";
+                $scope.status = "action-error";
             });
         };
 
@@ -245,7 +306,8 @@
         $scope.refreshData = function() {
             resultFactory.getResult().success(function (data) {
                 $scope.result = data;
-                $scope.valid = "Data received";
+                $scope.valid = "Solution received";
+                $scope.status = "ok";
                 $timeout($scope.refresh, 30000);
 
                 /* initialize name cache */
@@ -277,9 +339,14 @@
 
                 if (data.hardScore < 0) {
                     $scope.valid = "Solution is not doable! There are hard constraint violations.";
+                    $scope.status = "not-doable";
                 }
 
                 $scope.recomputeResources();
+            }).error(function (data, status) {
+                $scope.valid = "Data refresh failed: "+status;
+                $scope.status = "error";
+                $timeout($scope.refresh, 30000);
             });
         };
 
@@ -302,7 +369,12 @@
                 $scope.verification = data;
                 if (data.hardScore < 0) {
                     $scope.valid = "Solution is not doable! There are hard constraint violations.";
+                    $scope.status = "not-doable";
                 }
+            }).error(function (data, status) {
+                $scope.valid = "Solution verification failed with: "+status;
+                $scope.status = "error";
+                $timeout($scope.refresh, 30000);
             });
         };
 
@@ -314,6 +386,10 @@
                 });
                 $scope.recomputeResources();
                 $timeout($scope.refreshHostInfo, 15000);
+            }).error(function (data, status) {
+                $scope.valid = "Host info could not be retrieved: "+status;
+                $scope.status = "warning";
+                $timeout($scope.refreshHostInfo, 15000);
             });
         };
 
@@ -324,6 +400,10 @@
                     $scope.vms[vm.id] = vm;
                 });
                 $scope.recomputeResources();
+                $timeout($scope.refreshVmInfo, 15000);
+            }).error(function (data, status) {
+                $scope.valid = "VM info could not be retrieved: "+status;
+                $scope.status = "warning";
                 $timeout($scope.refreshVmInfo, 15000);
             });
         };
