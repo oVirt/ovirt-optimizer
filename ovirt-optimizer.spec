@@ -102,7 +102,7 @@ mvn --offline %{?with_extra_maven_opts} clean install
 
 # Copy core jars to the proper place
 install -dm 755 %{buildroot}%{_javadir}/%{name}
-mv ovirt-optimizer-core/target/*.jar %{buildroot}%{_javadir}/%{name}
+mv ovirt-optimizer-core/target/ovirt-optimizer-core.jar %{buildroot}%{_javadir}/%{name}
 
 ##
 ## Jboss7
