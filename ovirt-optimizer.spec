@@ -3,6 +3,8 @@
 %global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %global jetty_deployments %{_datadir}/jetty/webapps
 
+%define _jettydir %{_javadir}/jetty
+
 %if 0%{?rhel} && 0%{?rhel} < 7
 %global with_jetty 0
 %global with_jboss 1
@@ -24,7 +26,7 @@
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -42,11 +44,15 @@ BuildRequires:	unzip
 
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
+Requires:   xpp3
 
 %if 0%{?fedora} || 0%{?rhel} >= 7
 Requires:       quartz
 Requires:       protobuf-java >= 2.5
 %endif
+
+Requires:       antlr3
+Requires:       apache-commons-math >= 3
 
 Requires:       slf4j
 Requires:       ovirt-engine-sdk-java >= 3.5.0.2
@@ -83,6 +89,9 @@ Requires:      jetty >= 9
 Requires:      cdi-api
 Requires:      resteasy
 Requires:      jackson
+Requires:      jboss-annotations-1.1-api
+Requires:      jboss-transaction-1.1-api
+Requires:      tomcat-jsp-2.2-api
 
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
@@ -132,7 +141,7 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_javadir}/protobuf.jar
 %{_javadir}/quartz.jar
 %endif
-%{_javadir}/xpp3-minimal.jar"
+%{_javadir}/xpp3.jar"
 
 JBOSS_BUNDLE="target/lib/drools-*
 target/lib/kie-*
@@ -142,7 +151,6 @@ target/lib/quartz-*
 target/lib/protobuf-java-*
 %endif
 target/lib/mvel2-*
-target/lib/xmlpull-*
 target/lib/xstream-*"
 
 
@@ -179,8 +187,7 @@ pushd ovirt-optimizer-jetty
 mkdir target/lib
 mv target/%{name}-jetty/WEB-INF/lib/* target/lib
 
-JETTY_SYMLINK="%{_javadir}/cdi-api.jar
-%{_javadir}/resteasy/resteasy-cdi.jar
+JETTY_SYMLINK="%{_javadir}/resteasy/resteasy-cdi.jar
 %{_javadir}/resteasy/resteasy-jackson-provider.jar
 %{_javadir}/resteasy/resteasy-jaxrs.jar
 %{_javadir}/resteasy/jaxrs-api.jar
@@ -188,6 +195,12 @@ JETTY_SYMLINK="%{_javadir}/cdi-api.jar
 %{_javadir}/jackson/jackson-jaxrs.jar
 %{_javadir}/jackson/jackson-mapper-asl.jar
 %{_javadir}/jackson/jackson-xc.jar
+%if 0%{?rhel} || 0%{?fedora} < 20
+%{_javadir}/cdi-api.jar
+%endif
+%if 0%{?fedora} && 0%{?fedora}>=20
+%{_javadir}/cdi-api/cdi-api.jar
+%endif
 %{_javadir}/c3p0.jar
 %{_javadir}/javassist.jar
 %{_javadir}/scannotation.jar
@@ -195,12 +208,12 @@ JETTY_SYMLINK="%{_javadir}/cdi-api.jar
 %{_javadir}/slf4j/slf4j-log4j12.jar
 %{_javadir}/log4j.jar
 %{_javadir}/elspec.jar
+%{_jettydir}/jetty-jmx.jar
+%{_jettydir}/jetty-server.jar
+%{_jettydir}/jetty-servlet.jar
+%{_jettydir}/jetty-util.jar
 %{_javadir}/jboss-annotations-1.1-api.jar
 %{_javadir}/jboss-interceptors-1.1-api.jar
-/usr/share/jetty/lib/jetty-jmx-*
-/usr/share/jetty/lib/jetty-server-*
-/usr/share/jetty/lib/jetty-servlet-*
-/usr/share/jetty/lib/jetty-util-*
 %{_javadir}/jsp.jar
 %{_javadir}/jcip-annotations.jar"
 
@@ -281,6 +294,10 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Thu Aug 21 2014 Martin Sivak <msivak@redhat.com> 0.3-2
+- Packaging fixed for F19 and F20 in Docker
+- Source tarball removed from the RPM
+
 * Mon Aug 11 2014 Martin Sivak <msivak@redhat.com> 0.3-1
 - Fixed Fedora/RHEL conditionals
   Related: rhbz#1124264
