@@ -1,18 +1,27 @@
 %global engine_etc /etc/ovirt-engine
 %global engine_data %{_datadir}/ovirt-engine
-%global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %global jetty_deployments %{_datadir}/jetty/webapps
 
 %define _jettydir %{_javadir}/jetty
 
+%if 0%{?rhel} && 0%{?rhel} >= 7
+%global with_jetty 0
+%global with_jboss 1
+# oVirt distribution of JBoss
+%global jboss_deployments /usr/share/ovirt-engine-jboss-as/standalone/deployments
+%endif
+
 %if 0%{?rhel} && 0%{?rhel} < 7
 %global with_jetty 0
 %global with_jboss 1
+# oVirt distribution of JBoss
+%global jboss_deployments /usr/share/ovirt-engine-jboss-as/standalone/deployments
 %endif
 
 %if 0%{?fedora} && 0%{?fedora} < 20
 %global with_jboss 1
 %global with_jetty 1
+%global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %endif
 
 %if 0%{?fedora} && 0%{?fedora} >= 20
@@ -26,7 +35,7 @@
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	2%{?dist}
+Release:	3%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -51,9 +60,6 @@ Requires:       quartz
 Requires:       protobuf-java >= 2.5
 %endif
 
-Requires:       antlr3
-Requires:       apache-commons-math >= 3
-
 Requires:       slf4j
 Requires:       ovirt-engine-sdk-java >= 3.5.0.2
 
@@ -63,7 +69,7 @@ Vm to host assignments to utilize cluster resources better.
 
 %package ui
 Summary:        UI for displaying results in oVirt webadmin
-Requires:	ovirt-engine-webadmin-portal >= 3.4
+Requires:	    ovirt-engine-webadmin-portal >= 3.4
 
 %description ui
 This subpackage adds an UI plugin to the oVirt webadmin portal.
@@ -74,7 +80,22 @@ the assingment recommendations to the sysadmin there.
 %package jboss7
 Summary:       Integration of the optimization service to Jboss 7.
 Requires:      %{name} = %{version}
-Requires:	jboss-as >= 7.1.1-9.3
+
+%if 0%{?fedora}
+Requires:	   jboss-as >= 7.1.1-9.3
+%endif
+
+%if 0%{?rhel}
+# CentOS does not ship jboss, use the package provided by oVirt
+Requires:	   ovirt-engine-jboss-as >= 7.1.1-1
+Requires:      antlr3
+%endif
+
+%if 0%{?rhel} && 0%{?rhel} < 7
+# Old package names for el6
+Requires:      jakarta-commons-lang
+Requires:      jakarta-commons-io
+%endif
 
 %description jboss7
 This subpackage deploys the optimizer service to the standard Jboss 7
@@ -92,6 +113,9 @@ Requires:      jackson
 Requires:      jboss-annotations-1.1-api
 Requires:      jboss-transaction-1.1-api
 Requires:      tomcat-jsp-2.2-api
+Requires:      antlr3
+Requires:      apache-commons-math >= 3
+Requires:      ecj
 
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
@@ -126,29 +150,32 @@ mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
+%{_javadir}/antlr3.jar
 %{_javadir}/antlr3-runtime.jar
 %{_javadir}/commons-beanutils.jar
 %{_javadir}/commons-codec.jar
+%{_javadir}/commons-logging.jar
 %{_javadir}/commons-io.jar
 %{_javadir}/commons-lang.jar
-%{_javadir}/commons-logging.jar
+%if 0%{?fedora} || 0%{?rhel} >= 7
 %{_javadir}/commons-math3.jar
+%{_javadir}/protobuf.jar
+%{_javadir}/quartz.jar
 %{_javadir}/guava.jar
+%endif
 %{_javadir}/httpcomponents/httpcore.jar
 %{_javadir}/httpcomponents/httpclient.jar
 %{_javadir}/ovirt-engine-sdk-java/ovirt-engine-sdk-java.jar
-%if 0%{?fedora} || 0%{?rhel} >= 7
-%{_javadir}/protobuf.jar
-%{_javadir}/quartz.jar
-%endif
 %{_javadir}/xpp3.jar"
 
 JBOSS_BUNDLE="target/lib/drools-*
 target/lib/kie-*
 target/lib/optaplanner-*
 %if 0%{?rhel} && 0%{?rhel} < 7
+target/lib/guava-*
 target/lib/quartz-*
 target/lib/protobuf-java-*
+target/lib/commons-math3-*
 %endif
 target/lib/mvel2-*
 target/lib/xstream-*"
@@ -208,6 +235,7 @@ JETTY_SYMLINK="%{_javadir}/resteasy/resteasy-cdi.jar
 %{_javadir}/slf4j/slf4j-log4j12.jar
 %{_javadir}/log4j.jar
 %{_javadir}/elspec.jar
+%{_javadir}/ecj.jar
 %{_jettydir}/jetty-jmx.jar
 %{_jettydir}/jetty-server.jar
 %{_jettydir}/jetty-servlet.jar
@@ -294,6 +322,9 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Mon Aug 25 2014 Martin Sivak <msivak@redhat.com> 0.3-3
+- Packaging fixed for CentOS 6 with oVirt repos
+
 * Thu Aug 21 2014 Martin Sivak <msivak@redhat.com> 0.3-2
 - Packaging fixed for F19 and F20 in Docker
 - Source tarball removed from the RPM
