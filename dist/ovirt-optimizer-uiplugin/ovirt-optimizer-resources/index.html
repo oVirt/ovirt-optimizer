@@ -52,7 +52,14 @@
                     vmAction("request", arguments);
                 },
                 isEnabled: function() {
-                    return arguments.length >= 1;
+                    var i;
+                    for(i = 0; i < arguments.length; i++) {
+                        if(arguments[i].status.toLowerCase() === 'down') {
+                            return true;
+                        }
+                    }
+
+                    return false;
                 }
             });
 
