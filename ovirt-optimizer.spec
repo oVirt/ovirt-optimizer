@@ -296,6 +296,7 @@ install -dm 755 %{buildroot}/etc/%{name}
 install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %files
+%defattr(644, root, root, 755)
 %doc README COPYING
 %dir %{_javadir}/%{name}
 %{_javadir}/%{name}/*.jar
@@ -303,6 +304,7 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %if 0%{?with_jetty}
 %files jetty
+%defattr(644, root, root, 755)
 %dir %{_javadir}/%{name}/jetty/%{name}
 %{_javadir}/%{name}/jetty/%{name}/*
 %{jetty_deployments}/*
@@ -310,12 +312,14 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %if 0%{?with_jboss}
 %files jboss7
+%defattr(644, root, root, 755)
 %dir %{_javadir}/%{name}/jboss7.war
 %{_javadir}/%{name}/jboss7.war/*
 %{jboss_deployments}/*
 %endif
 
 %files ui
+%defattr(644, root, root, 755)
 %dir %{engine_data}/ui-plugins/ovirt-optimizer-resources
 %config %{engine_etc}/ui-plugins/ovirt-optimizer-config.json
 %{engine_data}/ui-plugins/ovirt-optimizer.json
