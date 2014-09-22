@@ -9,7 +9,7 @@
 
     function vmAction(action, paramsVms) {
         return $.ajax({method: 'GET',
-            url: "http://"+window.parent.location.host + "/ovirt-engine/api/vms",
+            url: "/ovirt-engine/api/vms",
             headers: {"Accept": "application/json"},
             success: function (data) {
                 // Create VM to Cluster cache

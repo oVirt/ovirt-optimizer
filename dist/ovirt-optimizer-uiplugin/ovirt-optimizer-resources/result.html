@@ -237,7 +237,7 @@
             console.log("Initiating migration of vm "+vm+" to host "+host);
             $http({
                 method: 'POST',
-                url: window.parent.location.protocol + "//"+ window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/migrate",
+                url: "/ovirt-engine/api/vms/" + vm + "/migrate",
                 headers: {"Content-Type": "application/json",
                           "Accept": "application/json"},
                 data: {host: {id: host},
@@ -253,10 +253,10 @@
         };
 
         $scope.start = function(vm, host, event) {
-            console.log("Initiating start of vm "+vm+" on host "+host);
+            console.log("Initiating start of vm " + vm + " on host "+host);
             $http({
                 method: 'POST',
-                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/vms/" + vm + "/start",
+                url: "/ovirt-engine/api/vms/" + vm + "/start",
                 headers: {"Content-Type": "application/json",
                           "Accept": "application/json"},
                 data: {
@@ -416,9 +416,9 @@
     resultPage.factory('hostsFactory', function ($http) {
         var factory = {};
         factory.getResult = function() {
-            console.log("http://"+window.parent.location.host + "/ovirt-engine/api/hosts");
+            console.log("/ovirt-engine/api/hosts");
             return $http({method: 'GET',
-                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/hosts",
+                url: "/ovirt-engine/api/hosts",
                 headers: {"Accept": "application/json"}});
         };
         return factory;
@@ -428,7 +428,7 @@
         var factory = {};
         factory.getResult = function() {
             return $http({method: 'GET',
-                url: window.parent.location.protocol + "//" + window.parent.location.host + "/ovirt-engine/api/vms",
+                url: "/ovirt-engine/api/vms",
                 headers: {"Accept": "application/json"}});
         };
         return factory;
