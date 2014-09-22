@@ -30,7 +30,7 @@
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.3
+%define project_version 0.4
 %{!?_version: %define _version %{project_version}}
 
 Name:		ovirt-optimizer
@@ -326,6 +326,11 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Mon Sep 11 2014 Martin Sivak <msivak@redhat.com> 0.4-1
+- Fixed file permissions
+- Fixed REST endpoint urls in UI plugin
+  Related: rhbz#1140721
+
 * Mon Aug 25 2014 Martin Sivak <msivak@redhat.com> 0.3-3
 - Packaging fixed for CentOS 6 with oVirt repos
 
