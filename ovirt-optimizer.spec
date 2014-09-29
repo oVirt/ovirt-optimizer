@@ -30,12 +30,12 @@
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.4
+%define project_version 0.5
 %{!?_version: %define _version %{project_version}}
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	3%{?dist}
+Release:	1%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -326,6 +326,11 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
 
 %changelog
+* Mon Sep 29 2014 Martin Sivak <msivak@redhat.com> 0.5-1
+- Optimize start button in webadmin UI is now active
+  only when used on stopped VM.
+  Resolves: rhbz#1140723
+
 * Mon Sep 11 2014 Martin Sivak <msivak@redhat.com> 0.4-1
 - Fixed file permissions
 - Fixed REST endpoint urls in UI plugin
