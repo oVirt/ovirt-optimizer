@@ -50,6 +50,7 @@ BuildRequires:	maven-local
 BuildRequires:  maven-war-plugin
 BuildRequires:  maven-jar-plugin
 BuildRequires:	unzip
+BuildRequires:  symlinks
 
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
@@ -80,6 +81,7 @@ the assingment recommendations to the sysadmin there.
 %package jboss7
 Summary:       Integration of the optimization service to Jboss 7.
 Requires:      %{name} = %{version}
+Requires:      %{name}-dependencies = %{version}
 
 %if 0%{?fedora}
 Requires:	   jboss-as >= 7.1.1-9.3
@@ -106,6 +108,7 @@ application server.
 %package jetty
 Summary:       Integration of the optimization service to Jetty 9.
 Requires:      %{name} = %{version}
+Requires:      %{name}-dependencies = %{version}
 Requires:      jetty >= 9
 Requires:      cdi-api
 Requires:      resteasy
@@ -122,6 +125,13 @@ This subpackage deploys the optimizer service to Jetty application
 server.
 %endif
 
+%package dependencies
+Summary:       Libraries not currently provided by the system, but necessary for the project.
+
+%description dependencies
+This subpackage bundles libraries that are not provided in the form of RPMs, but are necessary
+for the project to work. The goal is to drop this subpackage once the dependencies are available.
+
 %prep
 %setup -c -q
 
@@ -135,6 +145,7 @@ mvn --offline %{?with_extra_maven_opts} clean install
 
 # Copy core jars to the proper place
 install -dm 755 %{buildroot}%{_javadir}/%{name}
+install -dm 755 %{buildroot}%{_javadir}/%{name}/bundled
 mv ovirt-optimizer-core/target/ovirt-optimizer-core.jar %{buildroot}%{_javadir}/%{name}
 
 ##
@@ -190,8 +201,12 @@ cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss7.war
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
 
-# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
+# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/bundled
+echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
+
+# Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
+cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
+symlinks -rc %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
 
 # Symlink it to Jboss war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jboss_deployments}
@@ -260,9 +275,12 @@ cp -ar target/%{name}-jetty %{buildroot}%{_javadir}/%{name}/jetty/%{name}
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 
-# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/jetty.war/WEB-INF/lib
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
-echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
+# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/bundled
+echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
+
+# Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+symlinks -rc %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
 
 # Symlink it to Jetty war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jetty_deployments}
@@ -324,6 +342,11 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %config %{engine_etc}/ui-plugins/ovirt-optimizer-config.json
 %{engine_data}/ui-plugins/ovirt-optimizer.json
 %{engine_data}/ui-plugins/ovirt-optimizer-resources/*
+
+%files dependencies
+%defattr(644, root, root, 755)
+%dir %{_javadir}/%{name}/bundled
+%{_javadir}/%{name}/bundled/*
 
 %changelog
 * Mon Sep 29 2014 Martin Sivak <msivak@redhat.com> 0.5-1

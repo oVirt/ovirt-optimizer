@@ -7,4 +7,4 @@ Update the version and changelog in the spec file:
       mvn versions:set -DnewVersion=<new version>
 
 run:
-  git archive --format=tgz >ovirt-optimizer-{version}.tar.gz
+  git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz
