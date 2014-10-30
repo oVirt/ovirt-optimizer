@@ -238,7 +238,7 @@ end */
 // this is the memory analogy to OptimalForEvenDistribution unit
 rule "balancedMemory"
    when
-       (or PolicyUnitEnabled(uuid == "7db4ab05-81ab-42e8-868a-aee2df483ed2", $factor : factor)
+       (or PolicyUnitEnabled(uuid == "7db4ab05-81ab-42e8-868a-aee2df483edb", $factor : factor)
            PolicyUnitEnabled(uuid == "38440000-8cf0-14bd-c43e-10b96e4ef00b", $factor : factor))
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
@@ -281,7 +281,7 @@ end
 // OptimalForEvenGuestDistribution
 rule "balancedVmCount"
    when
-       PolicyUnitEnabled(uuid == "7db4ab05-81ab-42e8-868a-aee2df483ed2", $factor: factor)
+       PolicyUnitEnabled(uuid == "3ba8c988-f779-42c0-90ce-caa8243edee7", $factor: factor)
        Property(name == "MigrationThreshold", $migrationThreshold : value)
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
