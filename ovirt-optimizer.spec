@@ -56,8 +56,11 @@ Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
 Requires:   xpp3
 
-%if 0%{?fedora} || 0%{?rhel} >= 7
+%if 0%{?fedora}
 Requires:       quartz
+%endif
+
+%if 0%{?fedora} || 0%{?rhel} >= 7
 Requires:       protobuf-java >= 2.5
 %endif
 
@@ -90,8 +93,14 @@ Requires:	   jboss-as >= 7.1.1-9.3
 %if 0%{?rhel}
 # CentOS does not ship jboss, use the package provided by oVirt
 Requires:	   ovirt-engine-jboss-as >= 7.1.1-1
+
+# antlr3 is provided by JPackage for RHEL 6, but not for RHEL 7
+%if 0%{?rhel} < 7
 Requires:      antlr3
 %endif
+
+%endif #%if 0%{?rhel}
+
 
 %if 0%{?rhel} && 0%{?rhel} < 7
 # Old package names for el6
@@ -116,7 +125,9 @@ Requires:      jackson
 Requires:      jboss-annotations-1.1-api
 Requires:      jboss-transaction-1.1-api
 Requires:      tomcat-jsp-2.2-api
+%if 0%{?fedora} || 0%{?rhel} < 7
 Requires:      antlr3
+%endif
 Requires:      apache-commons-math >= 3
 Requires:      ecj
 
@@ -161,8 +172,6 @@ mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
-%{_javadir}/antlr3.jar
-%{_javadir}/antlr3-runtime.jar
 %{_javadir}/commons-beanutils.jar
 %{_javadir}/commons-codec.jar
 %{_javadir}/commons-logging.jar
@@ -171,8 +180,16 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %if 0%{?fedora} || 0%{?rhel} >= 7
 %{_javadir}/commons-math3.jar
 %{_javadir}/protobuf.jar
-%{_javadir}/quartz.jar
 %{_javadir}/guava.jar
+%endif
+%if 0%{?fedora}
+%{_javadir}/quartz.jar
+%{_javadir}/antlr3.jar
+%{_javadir}/antlr3-runtime.jar
+%endif
+%if 0%{?rhel} && 0%{?rhel} < 7
+%{_javadir}/antlr3.jar
+%{_javadir}/antlr3-runtime.jar
 %endif
 %{_javadir}/httpcomponents/httpcore.jar
 %{_javadir}/httpcomponents/httpclient.jar
@@ -184,9 +201,14 @@ target/lib/kie-*
 target/lib/optaplanner-*
 %if 0%{?rhel} && 0%{?rhel} < 7
 target/lib/guava-*
-target/lib/quartz-*
 target/lib/protobuf-java-*
 target/lib/commons-math3-*
+%endif
+%if 0%{?rhel}
+target/lib/quartz-*
+%endif
+%if 0%{?rhel} && 0%{?rhel} >= 7
+target/lib/antlr-*
 %endif
 target/lib/mvel2-*
 target/lib/xstream-*"
