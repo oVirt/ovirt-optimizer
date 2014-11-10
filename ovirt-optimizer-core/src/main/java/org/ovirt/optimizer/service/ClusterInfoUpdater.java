@@ -23,6 +23,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.net.ConnectException;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -129,9 +130,29 @@ public class ClusterInfoUpdater implements Runnable {
                     facts.add(policyUnitEnabled);
                 }
 
-                if (schedulingPolicy.getProperties() != null
+                /* Find scheduling policy properties - try cluster configuration first
+                   and policy defaults as backup
+                 */
+                Collection<Property> schedulingPolicyProperties = null;
+
+                if (clusterInstance.getSchedulingPolicy().getProperties() != null
+                        && clusterInstance.getSchedulingPolicy().getProperties().getProperties() != null) {
+                    schedulingPolicyProperties = clusterInstance.getSchedulingPolicy().getProperties().getProperties();
+                } else if (schedulingPolicy.getProperties() != null
                         && schedulingPolicy.getProperties().getProperties() != null) {
-                    facts.addAll(schedulingPolicy.getProperties().getProperties());
+                    schedulingPolicyProperties = schedulingPolicy.getProperties().getProperties();
+                } else {
+                    log.warn("No cluster policy properties found");
+                }
+
+
+                if (schedulingPolicyProperties != null) {
+                    if (log.isDebugEnabled()) {
+                        for (Property p: schedulingPolicyProperties) {
+                            log.debug("Found policy property {} with value '{}'", p.getName(), p.getValue());
+                        }
+                    }
+                    facts.addAll(schedulingPolicyProperties);
                 }
             } catch (ConnectException ex) {
                 log.error("Cluster update failed", ex);
