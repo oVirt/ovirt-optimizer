@@ -30,7 +30,7 @@
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.5
+%define project_version 0.6
 %{!?_version: %define _version %{project_version}}
 
 Name:		ovirt-optimizer
@@ -349,6 +349,15 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{_javadir}/%{name}/bundled/*
 
 %changelog
+* Mon Nov 10 2014 Martin Sivak <msivak@redhat.com> 0.6-1
+- Fix uuid matching rules for even distribution policies
+  Resolves: rhbz#1156141
+
+- Fix the way we collect cluster policy parameters
+  Related: rhbz#1156141
+
+- Use separate subpackage for bundled dependencies
+
 * Mon Sep 29 2014 Martin Sivak <msivak@redhat.com> 0.5-1
 - Optimize start button in webadmin UI is now active
   only when used on stopped VM.
