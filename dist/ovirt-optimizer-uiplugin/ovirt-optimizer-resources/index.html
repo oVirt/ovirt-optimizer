@@ -44,10 +44,10 @@
 
     api.register({
         UiInit: function() {
-            api.addSubTab('Cluster', 'Optimizer result', 'ovirt-optimizer-cluster-tab',
+            api.addSubTab('Cluster', 'Optimizer Result', 'ovirt-optimizer-cluster-tab',
                 'plugin/oVirtOptimizer/result.html');
 
-            api.addMainTabActionButton('VirtualMachine', 'Optimize start', {
+            api.addMainTabActionButton('VirtualMachine', 'Optimize Start', {
                 onClick: function() {
                     vmAction("request", arguments);
                 },
@@ -63,7 +63,7 @@
                 }
             });
 
-            api.addMainTabActionButton('VirtualMachine', 'Cancel optimization', {
+            api.addMainTabActionButton('VirtualMachine', 'Cancel Optimization', {
                 onClick: function() {
                     vmAction("cancel", arguments);
                 },
