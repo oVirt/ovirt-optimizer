@@ -7,6 +7,7 @@ import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
 import org.optaplanner.core.api.solver.event.BestSolutionChangedEvent;
 import org.optaplanner.core.api.solver.event.SolverEventListener;
+import org.optaplanner.core.config.score.director.ScoreDirectorFactoryConfig;
 import org.optaplanner.core.config.solver.SolverConfig;
 import org.optaplanner.core.config.solver.termination.TerminationConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
@@ -22,6 +23,7 @@ import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,9 +42,18 @@ public class ClusterOptimizer implements Runnable {
     ClusterInfoUpdater updater;
     ClusterInfoUpdater.ClusterUpdateAvailable updateHandler;
     final Finished finishedCallback;
+    final List<File> customDrlFiles;
 
     public interface Finished {
         void solvingFinished(ClusterOptimizer planner, Thread thread);
+    }
+
+    private void addCustomDrlFiles(ScoreDirectorFactoryConfig config, List<File> customDrlFiles) {
+        if (config.getScoreDrlFileList() != null) {
+            config.getScoreDrlFileList().addAll(customDrlFiles);
+        } else {
+            config.setScoreDrlFileList(customDrlFiles);
+        }
     }
 
     /**
@@ -65,6 +76,7 @@ public class ClusterOptimizer implements Runnable {
         log.debug("Reevaluating solution {}", migrationIds);
 
         SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/scoreonly.xml");
+        addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), customDrlFiles);
         Solver solver = solverFactory.buildSolver();
 
         /* Reconstruct the Solution object with current facts */
@@ -151,17 +163,20 @@ public class ClusterOptimizer implements Runnable {
 
     public static ClusterOptimizer optimizeCluster(OvirtClient client, ConfigProvider configProvider, final String clusterId, int maxSteps, Finished finishedCallback) {
         long timeout = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT)) * 1000;
-        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout, finishedCallback);
+        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout, finishedCallback, configProvider.customRuleFiles());
         ClusterInfoUpdater updater = new ClusterInfoUpdater(client, configProvider, clusterId);
         optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));
         return optimizer;
     }
 
-    private ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit, Finished finishedCallback) {
+    private ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit, Finished finishedCallback,
+                             List<File> customDrlFiles) {
         this.clusterId = clusterId;
         this.finishedCallback = finishedCallback;
+        this.customDrlFiles = customDrlFiles;
 
         SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/solver.xml");
+        addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), this.customDrlFiles);
         SolverConfig solverConfig = solverFactory.getSolverConfig();
         TerminationConfig terminationConfig = solverConfig.getTerminationConfig();
         terminationConfig.setUnimprovedMillisecondsSpentLimit(unimprovedMilisLimit);

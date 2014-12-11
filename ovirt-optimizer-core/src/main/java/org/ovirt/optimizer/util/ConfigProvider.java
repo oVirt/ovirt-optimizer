@@ -1,9 +1,13 @@
 package org.ovirt.optimizer.util;
 
+import com.google.common.base.Predicate;
 import org.slf4j.Logger;
 
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 public class ConfigProvider {
@@ -20,6 +24,7 @@ public class ConfigProvider {
     public static final String SOLVER_TIMEOUT = "org.ovirt.optimizer.solver.timeout";
     public static final String SOLVER_DATA_REFRESH = "org.ovirt.optimizer.solver.data.refresh";
     public static final String SOLVER_CLUSTER_REFRESH = "org.ovirt.optimizer.solver.cluster.refresh";
+    public static final String SOLVER_CUSTOM_RULE_DIR = "org.ovirt.optimizer.solver.custom.rules.d";
 
 
     private String configFile;
@@ -43,6 +48,7 @@ public class ConfigProvider {
         config.setProperty(SOLVER_TIMEOUT, "30");
         config.setProperty(SOLVER_DATA_REFRESH, "60");
         config.setProperty(SOLVER_CLUSTER_REFRESH, "300");
+        config.setProperty(SOLVER_CUSTOM_RULE_DIR, "/etc/ovirt-optimizer/rules.d");
     }
 
     public ConfigProvider load() {
@@ -57,5 +63,29 @@ public class ConfigProvider {
 
     public Properties getConfig() {
         return config;
+    }
+
+    public List<File> customRuleFiles() {
+        File dir = new File(config.getProperty(SOLVER_CUSTOM_RULE_DIR));
+        List<File> listOfDrlFiles = new ArrayList<>();
+
+        File[] candidateFiles = dir.listFiles();
+
+        if (candidateFiles == null) {
+            log.warn("Could not get a list of custom DRL files");
+            return listOfDrlFiles;
+        }
+
+        log.debug("Found {} custom DRL candidate files", candidateFiles.length);
+
+        for (File input: candidateFiles) {
+            if (input.isFile()
+                    && input.getName().endsWith(".drl")) {
+                listOfDrlFiles.add(input);
+                log.debug("Using {} custom DRL file", input.getName());
+            }
+        }
+
+        return listOfDrlFiles;
     }
 }
