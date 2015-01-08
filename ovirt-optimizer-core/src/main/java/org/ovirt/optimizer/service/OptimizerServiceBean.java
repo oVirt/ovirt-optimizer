@@ -259,7 +259,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
             List<Map<String, String>> migrations = new ArrayList<>();
             for (Migration step: best.getSteps()) {
-                if (step.getVm() == null || step.getDestination() == null) {
+                if (!step.isValid()) {
                     continue;
                 }
                 Map<String, String> migration = new HashMap<>();

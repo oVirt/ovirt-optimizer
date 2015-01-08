@@ -23,6 +23,8 @@ public class Migration implements ClusterSituation {
     /* shadow variables */
     Map<String, String> vmToHostAssignments;
     Map<String, Set<String>> hostToVmAssignments;
+    boolean start;
+    boolean valid;
 
     public Migration() {
         vmToHostAssignments = new HashMap<>();
@@ -55,7 +57,7 @@ public class Migration implements ClusterSituation {
     }
 
     /**
-     * This method recomputes the cluster situation that will be the result
+     * This method recomputes the cluster situation as a cumulative result
      * of this and all previous steps.
      */
     public void recomputeSituationAfter(ClusterSituation previous) {
@@ -67,6 +69,8 @@ public class Migration implements ClusterSituation {
         }
 
         if (vm == null || destination == null) {
+            // Incomplete data set, no migration is performed
+            valid = false;
             return;
         }
 
@@ -82,12 +86,23 @@ public class Migration implements ClusterSituation {
         }
         hostSet.add(vm.getId());
 
+		/* Check whether the VM is newly started by this step -
+           or in other words: if it was not assigned in the previous step
+		 */
+        start = (vmToHostAssignments.get(vm.getId()) == null);
+
+		/* Check whether a migration is performed here. We can ignore this step
+		   if the VM was already running on the destination host
+		 */
+        String oldHost = vmToHostAssignments.get(vm.getId());
+        valid = (oldHost == null) ? destination != null : !oldHost.equals(destination.getId());
+
         vmToHostAssignments.put(vm.getId(), destination.getId());
     }
 
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
             sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                       @CustomShadowVariable.Source(variableName = "vm")})
+                    @CustomShadowVariable.Source(variableName = "vm")})
     @Override
     public Map<String, String> getVmToHostAssignments() {
         return vmToHostAssignments;
@@ -95,7 +110,7 @@ public class Migration implements ClusterSituation {
 
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
             sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                       @CustomShadowVariable.Source(variableName = "vm")})
+                    @CustomShadowVariable.Source(variableName = "vm")})
     @Override
     public Map<String, Set<String>> getHostToVmAssignments() {
         return hostToVmAssignments;
@@ -103,6 +118,35 @@ public class Migration implements ClusterSituation {
 
     public void setHostToVmAssignments(Map<String, Set<String>> hostToVmAssignments) {
         this.hostToVmAssignments = hostToVmAssignments;
+    }
+
+    /**
+     * Check whether this migration represents a VM start action. The value is
+     * precomputed using the recomputeSituationAfter hook.
+     */
+    @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
+            sources = {@CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "vm")})
+    public boolean isStart() {
+        return start;
+    }
+
+    public void setStart(boolean isStart) {
+        this.start = isStart;
+    }
+
+    /**
+     * Check whether this migration is doing anything or represents an incomplete step.
+     */
+    @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
+            sources = {@CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "vm")})
+    public boolean isValid() {
+        return valid;
+    }
+
+    public void setValid(boolean isValid) {
+        this.valid = isValid;
     }
 
     @PlanningVariable(valueRangeProviderRefs = {"vms"}, nullable = true)

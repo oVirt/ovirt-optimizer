@@ -47,11 +47,16 @@ public class MigrationStepChangeListener implements VariableListener<Migration> 
                 logger.trace("Recomputing shadow variables in {} ({})", m.toString(), m.getStepsToFinish());
                 scoreDirector.beforeVariableChanged(m, "vmToHostAssignments");
                 scoreDirector.beforeVariableChanged(m, "hostToVmAssignments");
+                scoreDirector.beforeVariableChanged(m, "start");
+                scoreDirector.beforeVariableChanged(m, "valid");
 
                 m.recomputeSituationAfter(situation);
 
                 scoreDirector.afterVariableChanged(m, "vmToHostAssignments");
                 scoreDirector.afterVariableChanged(m, "hostToVmAssignments");
+                scoreDirector.afterVariableChanged(m, "start");
+                scoreDirector.afterVariableChanged(m, "valid");
+
             }
 
             situation = m;
