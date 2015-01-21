@@ -9,7 +9,7 @@
     <!-- Score configuration -->
     <scoreDirectorFactory>
         <scoreDefinitionType>HARD_SOFT</scoreDefinitionType>
-        <scoreDrl>/org/ovirt/optimizer/service/rules/default.drl</scoreDrl>
+        <scoreDrl>org/ovirt/optimizer/service/rules/default.drl</scoreDrl>
     </scoreDirectorFactory>
 
     <constructionHeuristic>

@@ -31,6 +31,12 @@ public class Migration implements ClusterSituation {
         hostToVmAssignments = new HashMap<>();
     }
 
+    public Migration(VM vm, Host destination) {
+        this();
+        this.vm = vm;
+        this.destination = destination;
+    }
+
     public void setVm(VM vm) {
         this.vm = vm;
     }
