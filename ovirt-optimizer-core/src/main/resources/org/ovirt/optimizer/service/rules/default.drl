@@ -196,6 +196,17 @@ rule "ensureVmRunning"
         scoreHolder.addHardConstraintMatch(kcontext, -10000);
 end
 
+// Ensure DOWN VMs are not started without request
+rule "ensureVmNotRunning"
+    when
+        $step: Migration(finalStep == true)
+        $vm: VM($vmId : id,
+                $step.getAssignment($vmId) != null)
+        not(exists RunningVm(id == $vmId))
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -10000);
+end
+
 rule "ensureVmRunningEarly"
     when
         $step: Migration(valid == true)
