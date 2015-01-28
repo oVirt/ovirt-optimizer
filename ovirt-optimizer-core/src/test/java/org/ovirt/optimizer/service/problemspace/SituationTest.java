@@ -38,6 +38,62 @@ public class SituationTest {
     }
 
     /**
+     * Test whether a pinned to host VM can be started on different host
+     */
+    @Test
+    public void testStartPinnedVmOnWrongHost() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host = optimizer.createHost("H1", 1000000000L);
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+
+        VM vm = optimizer.createVm("VM-A", 10000000L);
+        vm.getPlacementPolicy().setHost(host);
+        vm.getPlacementPolicy().setAffinity("pinned");
+
+        HardSoftScore result = optimizer
+                .startVm(vm)
+                .addMigration(vm, host2)
+                .enablePolicyUnit(PolicyUnit.PIN_TO_HOST_FILTER)
+                .score();
+
+        assertNotEquals(0, result.getHardScore());
+    }
+
+    /**
+     * Test whether a pinned to host VM can be started on proper host
+     * with migration of other VM performed first
+     */
+    @Test
+    public void testStartPinnedVmWithMigration() {
+        TestOptimizer optimizer = new TestOptimizer(EnumSet.noneOf(ClusterFeatures.class));
+
+        Host host = optimizer.createHost("H1", 1000000000L);
+        Host host2 = optimizer.createHost("H2", 1000000000L);
+
+        // Create new instance of host to mimic the SDK's behaviour better
+        Host dummyhost = new Host();
+        dummyhost.setId("H1");
+
+        VM vm = optimizer.createVm("VM-A", 10000000L);
+        vm.getPlacementPolicy().setHost(dummyhost);
+        vm.getPlacementPolicy().setAffinity("pinned");
+
+        VM vm2 = optimizer.createVm("VM-A", 10000000L);
+        vm2.setHost(host);
+
+        HardSoftScore result = optimizer
+                .startVm(vm)
+                .addMigration(vm2, host2)
+                .addMigration(vm, host)
+                .enablePolicyUnit(PolicyUnit.BALANCE_VM_COUNT)
+                .enablePolicyUnit(PolicyUnit.PIN_TO_HOST_FILTER)
+                .score();
+
+        assertNotEquals(0, result.getHardScore());
+    }
+
+    /**
      * Test whether a pinned to host VM can't be migrated
      */
     @Test

@@ -166,16 +166,27 @@ rule "checkRequiredDisplayNetworks"
 end
 
 // PinToHostPolicyUnit - only check migrations, ignore starts
-rule "pinToHost"
+rule "pinToHostMigration"
     when
         exists PolicyUnitEnabled(uuid == "12262ab6-9690-4bc3-a2b3-35573b172d54")
-        $step: Migration(valid == true, start == false, $destination: destination)
+        $step: Migration(valid == true, start == false, $vm: vm, $destination: destination)
+        VM(id == $vm.id,
+           placementPolicy.affinity != "migratable")
+        RunningVm(id == $vm.id)
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -1);
+end
+
+// PinToHostPolicyUnit - only check placement for start actions
+rule "pinToHostStart"
+    when
+        exists PolicyUnitEnabled(uuid == "12262ab6-9690-4bc3-a2b3-35573b172d54")
+        $step: Migration(valid == true, start == true, $vm: vm, $destination: destination)
         $host: Host(id == $destination.id)
-        $vm : VM($vmId : id,
-                 $step.getAssignment($vmId) == $host.id,
-                 placementPolicy.host != $host,
-                 placementPolicy.affinity != "migratable")
-        RunningVm(id == $vmId)
+        VM(id == $vm.id,
+           placementPolicy.host != null,
+           placementPolicy.host.id != $host.id)
+        RunningVm(id == $vm.id)
     then
         scoreHolder.addHardConstraintMatch(kcontext, -1);
 end
