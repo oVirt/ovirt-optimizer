@@ -1,10 +1,43 @@
+RUN
+
+1. using jetty:
+
+1.1. quick developer mode -
+
+    OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
+    mvn jetty:run -pl ovirt-optimizer-jetty/
+
+1.2. service mode (forked the bg, with debug port 5005 and 'stop' port 1353) -
+
+    OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
+    mvn -Prun -pl ovirt-optimizer-jetty/
+
+#sample ovirt-optimizer.properties
+org.ovirt.optimizer.sdk.protocol=http
+org.ovirt.optimizer.sdk.server=dockerhost
+org.ovirt.optimizer.sdk.port=8080
+org.ovirt.optimizer.sdk.username=admin@internal
+org.ovirt.optimizer.sdk.password=PASSWORD
+org.ovirt.optimizer.sdk.ca.store=/etc/ovirt-optimizer/ovirt-optimizer.truststore
+
+org.ovirt.optimizer.solver.steps=20
+org.ovirt.optimizer.solver.timeout=30
+org.ovirt.optimizer.solver.data.refresh=60
+org.ovirt.optimizer.solver.cluster.refresh=300
+#end of ovirt-optimizer.properties
+
+a sample of the file is also under PROJECT-ROOT/ovirt-optimizer-core/src/main/resources
+
+
+RELEASE
+
 How to prepare a release:
 
-Update the version and changelog in the spec file:
+1. update the version and changelog in the spec file:
 
-- change project_version and changelog in the spec
-- run
+1.1. change project_version and changelog in the spec
+    - run
       mvn versions:set -DnewVersion=<new version>
 
-run:
-  git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz
+2. run:
+   git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz
