@@ -90,6 +90,17 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <version>${jettyVersion}</version>
+                <configuration>
+                    <contextPath>/ovirt-optimizer</contextPath>
+                    <stopPort>1353</stopPort>
+                    <stopKey>quit</stopKey>
+                    <jvmArgs>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005</jvmArgs>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 
@@ -98,20 +109,6 @@
             <id>run</id>
             <build>
                 <defaultGoal>clean jetty:run-forked</defaultGoal>
-                <plugins>
-                    <plugin>
-                        <groupId>org.eclipse.jetty</groupId>
-                        <artifactId>jetty-maven-plugin</artifactId>
-                        <version>${jettyVersion}</version>
-                        <configuration>
-                            <contextPath>/ovirt-optimizer</contextPath>
-                            <stopPort>1353</stopPort>
-                            <stopKey>quit</stopKey>
-                            <contextXml>src/main/webapp/WEB-INF/jetty-web.xml</contextXml>
-                            <jvmArgs>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005</jvmArgs>
-                        </configuration>
-                    </plugin>
-                </plugins>
             </build>
         </profile>
     </profiles>
