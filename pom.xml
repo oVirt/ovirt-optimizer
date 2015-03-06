@@ -9,7 +9,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>org.ovirt.optimizer</groupId>
-    <version>0.6</version>
+    <version>0.7</version>
     <name>oVirt optimizer service</name>
     <description>
         This service runs optimization algorithms to determine the optimal
