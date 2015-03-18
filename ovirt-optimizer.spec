@@ -30,12 +30,13 @@
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.6
+%define project_version 0.8
 %{!?_version: %define _version %{project_version}}
+%{!?_release: %define _release 1}
 
 Name:		ovirt-optimizer
 Version:	%{_version}
-Release:	1%{?dist}
+Release:	%{_release}%{?dist}
 Summary:	Cluster balance optimization service for oVirt
 Group:		%{ovirt_product_group}
 License:	ASL 2.0
@@ -147,7 +148,7 @@ for the project to work. The goal is to drop this subpackage once the dependenci
 %setup -c -q
 
 %build
-mvn --offline %{?with_extra_maven_opts} clean install
+mvn %{?with_extra_maven_opts} clean install
 
 %install
 ##
