@@ -46,6 +46,10 @@
 
         <!-- fixes deployment issue //-->
         <xpp3_min.version>1.1.4c</xpp3_min.version>
+
+        <optaplanner.version>6.2.0.Final</optaplanner.version>
+        <ovirt-engine.sdk.version>3.5.2.0</ovirt-engine.sdk.version>
+        <quartz.version>2.2.0</quartz.version>
     </properties>
 
     <build>
@@ -90,4 +94,21 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>rhev</id>
+
+            <repositories>
+                <repository>
+                    <id>redhat</id>
+                    <url>http://maven.repository.redhat.com/</url>
+                </repository>
+            </repositories>
+
+            <properties>
+                <optaplanner.version>6.2.0.Final-redhat-4</optaplanner.version>
+            </properties>
+        </profile>
+    </profiles>
 </project>

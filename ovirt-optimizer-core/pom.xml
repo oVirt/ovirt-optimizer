@@ -16,7 +16,7 @@
         <dependency>
             <groupId>org.optaplanner</groupId>
             <artifactId>optaplanner-core</artifactId>
-            <version>6.2.0.Final</version>
+            <version>${optaplanner.version}</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
@@ -57,7 +57,7 @@
         <dependency>
             <groupId>org.ovirt.engine.sdk</groupId>
             <artifactId>ovirt-engine-sdk-java</artifactId>
-            <version>3.5.2.0</version>
+            <version>${ovirt-engine.sdk.version}</version>
         </dependency>
         <dependency>
             <groupId>xpp3</groupId>
@@ -67,7 +67,7 @@
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>2.2.0</version>
+            <version>${quartz.version}</version>
         </dependency>
 
         <dependency>
