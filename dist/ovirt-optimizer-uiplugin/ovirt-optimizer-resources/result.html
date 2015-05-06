@@ -160,16 +160,23 @@
     <table ng-hide="_.isEmpty(result.hostToVms)">
         <thead>
         <tr>
-            <th class="object-name">host</th>
-            <th class="object-name">vm</th>
+            <th class="object-name">&nbsp;</th>
+            <th class="object-name">&nbsp;</th>
             <th colspan="2" class="memory-gauge">memory [all in GB]</th>
             <th>&nbsp;</th>
         </tr>
         <tr>
-            <th>&nbsp;</th>
-            <th>&nbsp;</th>
+            <th class="object-name">host</th>
+            <th class="object-name">&nbsp;</th>
             <th>used</th>
             <th>available</th>
+            <th>&nbsp;</th>
+        </tr>
+        <tr>
+            <th class="object-name">&nbsp;</th>
+            <th class="object-name">vm</th>
+            <th>guaranteed</th>
+            <th>maximum</th>
             <th>&nbsp;</th>
         </tr>
         </thead>
