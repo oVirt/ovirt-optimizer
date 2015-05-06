@@ -96,7 +96,7 @@ public class ClusterFactChange implements ProblemFactChange {
             // Remove missing VMs from the migrations
             if (step.getVm() == null) {
                 // nothing needed
-            } else if (!hostMap.containsKey(step.getVm().getId())) {
+            } else if (!vmMap.containsKey(step.getVm().getId())) {
                 scoreDirector.beforeVariableChanged(step, "vm");
                 step.setVm(null);
                 scoreDirector.afterVariableChanged(step, "vm");
