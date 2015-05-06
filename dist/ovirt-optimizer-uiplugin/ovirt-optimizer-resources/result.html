@@ -389,10 +389,18 @@
         };
 
         $scope.recomputeResources = function() {
+            if ($scope.result == null || $scope.result.hosts == null) {
+                return;
+            }
+
             $scope.result.hosts.forEach(function (host) {
                 console.log("Resetting host "+host);
                 $scope.hosts[host].willusememory = 0;
             });
+
+            if ($scope.result.vms == null) {
+                return;
+            }
 
             $scope.result.vms.forEach(function (vm) {
                 console.log("Adding mem of vm "+vm+" to host "+$scope.result.vmToHost[vm]);
