@@ -116,6 +116,11 @@
             color: red;
             content: "";
         }
+
+        section#solution.not-doable {
+            opacity: 0.4;
+            filter: alpha(opacity=40);
+        }
     </style>
 </head>
 <body>
@@ -141,6 +146,7 @@
     </table>
     <p ng-hide="result.requestedVms.length">No VM starts are requested at this moment.</p>
 
+    <section id="solution" class="{{status}}">
     <h2>Migration / Start steps</h2>
     <table>
         <tbody ng-repeat="step in result.migrations">
@@ -207,6 +213,8 @@
         </tr>
         </tbody>
     </table>
+    </section>
+
     <p ng-show="_.isEmpty(result.hostToVms)">This cluster has no hosts.</p>
 
     <!--
@@ -376,7 +384,7 @@
                 });
 
                 if (data.hardScore < 0) {
-                    $scope.valid = "Solution is not doable! There are hard constraint violations.";
+                    $scope.valid = "Solution is not doable! There are hard constraint violations. Please wait for the optimizer to find a better solution.";
                     $scope.status = "not-doable";
                 }
 
