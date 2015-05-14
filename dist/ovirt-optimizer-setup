@@ -1,0 +1,44 @@
+#!/bin/sh
+VERSION="6.2.0.Final"
+URL="http://download.jboss.org/optaplanner/release/$VERSION/optaplanner-distribution-$VERSION.zip"
+LOCAL="$HOME/optaplanner-distribution-$VERSION.zip"
+MD5="f84a2842fcb3effc170545b12ea67c73"
+
+if [ -r "/usr/share/java/optaplanner-distribution-$VERSION" ]; then
+    echo "It seems that Optaplanner $VERSION is already installed."
+    exit 0
+fi
+
+echo "Trying to download Optaplanner $VERSION [this might take a while]"
+curl $URL >$LOCAL
+
+if [ ! -r $LOCAL ]; then
+    echo "Optaplanner $VERSION could not be downloaded, please download $URL and unpack the archive to /usr/share/java"
+    exit 1
+fi
+
+cat <<EOF | md5sum -c --status -
+$MD5  $LOCAL
+EOF
+
+if [ $? -ne 0 ]; then
+    echo "Optaplanner $VERSION archive is corrupted, please download $URL and unpack the archive to /usr/share/java"
+    exit 2
+fi
+
+
+echo "Unpacking Optaplanner to the proper directory"
+pushd /usr/share/java
+unzip $LOCAL &>/dev/null
+
+if [ $? -ne 0 ]; then
+    echo "Optaplanner $VERSION archive could not be extracted to /usr/share/java, check your permissions."
+    exit 2
+else
+  rm -f $LOCAL
+  echo "Optaplanner is installed."
+fi
+
+popd
+
+

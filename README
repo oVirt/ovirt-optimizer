@@ -1,4 +1,28 @@
-RUN
+INSTALL
+
+Make sure you have Oracle Java 7 or OpenJDK >= 1.7 installed.
+
+Install ovirt-optimizer for jboss or jetty using:
+
+yum install ovirt-optimizer-jetty
+or
+yum install ovirt-optimizer-jboss7
+
+Unpack the Optaplanner 6.2.0 to /usr/share/java which should create a directory
+/usr/share/java/optaplanner-distribution-6.2.0.Final
+
+You can download Optaplanner from http://download.jboss.org/optaplanner/release/6.2.0.Final/optaplanner-distribution-6.2.0.Final.zip
+
+Or you can use the script ovirt-optimizer-setup that will try to do that
+for you.
+
+RUN (USING RPM DISTRIBUTION)
+
+Just start Jetty or Jboss, for example:
+
+systemctl start jboss-as
+
+RUN (USING SOURCE  DISTRIBUTION)
 
 1. using jetty:
 

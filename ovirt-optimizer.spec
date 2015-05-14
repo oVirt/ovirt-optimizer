@@ -1,6 +1,8 @@
 %global engine_etc /etc/ovirt-engine
 %global engine_data %{_datadir}/ovirt-engine
 %global jetty_deployments %{_datadir}/jetty/webapps
+%global _optaplanner %{_javadir}/%{name}/optaplanner
+%global _optaplanner_archive %{_javadir}/optaplanner-distribution-6.2.0.Final/binaries
 
 %define _jettydir %{_javadir}/jetty
 
@@ -55,14 +57,20 @@ BuildRequires:  symlinks
 
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
-Requires:   xpp3
+
+Requires:       curl
+Requires:       unzip
 
 %if 0%{?fedora}
+Requires:       antlr3
 Requires:       quartz
 %endif
 
+Requires:       xpp3
+
 %if 0%{?fedora} || 0%{?rhel} >= 7
 Requires:       protobuf-java >= 2.5
+Requires:       guava >= 13
 %endif
 
 Requires:       slf4j
@@ -94,20 +102,7 @@ Requires:	   jboss-as >= 7.1.1-9.3
 %if 0%{?rhel}
 # CentOS does not ship jboss, use the package provided by oVirt
 Requires:	   ovirt-engine-jboss-as >= 7.1.1-1
-
-# antlr3 is provided by JPackage for RHEL 6, but not for RHEL 7
-%if 0%{?rhel} < 7
-Requires:      antlr3
-%endif
-
 %endif #%if 0%{?rhel}
-
-
-%if 0%{?rhel} && 0%{?rhel} < 7
-# Old package names for el6
-Requires:      jakarta-commons-lang
-Requires:      jakarta-commons-io
-%endif
 
 %description jboss7
 This subpackage deploys the optimizer service to the standard Jboss 7
@@ -126,9 +121,6 @@ Requires:      jackson
 Requires:      jboss-annotations-1.1-api
 Requires:      jboss-transaction-1.1-api
 Requires:      tomcat-jsp-2.2-api
-%if 0%{?fedora} || 0%{?rhel} < 7
-Requires:      antlr3
-%endif
 Requires:      apache-commons-math >= 3
 Requires:      ecj
 
@@ -155,10 +147,17 @@ mvn %{?with_extra_maven_opts} clean install
 ## Core
 ##
 
+# Copy the setup script to the proper place
+install -dm 755 %{buildroot}/usr/bin
+mv dist/ovirt-optimizer-setup %{buildroot}/usr/bin/
+
 # Copy core jars to the proper place
 install -dm 755 %{buildroot}%{_javadir}/%{name}
 install -dm 755 %{buildroot}%{_javadir}/%{name}/bundled
 mv ovirt-optimizer-core/target/ovirt-optimizer-core.jar %{buildroot}%{_javadir}/%{name}
+
+# Optaplanner symlink
+ln -sf %{_optaplanner_archive} %{buildroot}%{_optaplanner}
 
 ##
 ## Jboss7
@@ -176,43 +175,46 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_javadir}/commons-beanutils.jar
 %{_javadir}/commons-codec.jar
 %{_javadir}/commons-logging.jar
-%{_javadir}/commons-io.jar
-%{_javadir}/commons-lang.jar
+%{_optaplanner}/drools-compiler-6.2.0.Final.jar
+%{_optaplanner}/drools-core-6.2.0.Final.jar
+%{_optaplanner}/kie-api-6.2.0.Final.jar
+%{_optaplanner}/kie-internal-6.2.0.Final.jar
+%{_optaplanner}/mvel2-2.2.4.Final.jar
+%{_optaplanner}/optaplanner-core-6.2.0.Final.jar
+%{_optaplanner}/xmlpull-1.1.3.1.jar
+%{_optaplanner}/xstream-1.4.7.jar
 %if 0%{?fedora} || 0%{?rhel} >= 7
-%{_javadir}/commons-math3.jar
-%{_javadir}/protobuf.jar
 %{_javadir}/guava.jar
+%{_javadir}/protobuf.jar
 %endif
 %if 0%{?fedora}
-%{_javadir}/quartz.jar
 %{_javadir}/antlr3.jar
 %{_javadir}/antlr3-runtime.jar
+%{_javadir}/commons-io.jar
+%{_javadir}/commons-lang.jar
+%{_javadir}/commons-math3.jar
+%{_javadir}/quartz.jar
+%endif
+%if 0%{?rhel}
+%{_optaplanner}/antlr-runtime-3.5.jar
+%{_optaplanner}/commons-io-2.1.jar
+%{_optaplanner}/commons-lang-2.6.jar
+%{_optaplanner}/commons-math3-3.2.jar
 %endif
 %if 0%{?rhel} && 0%{?rhel} < 7
-%{_javadir}/antlr3.jar
-%{_javadir}/antlr3-runtime.jar
+%{_optaplanner}/guava-13.0.1.jar
+%{_optaplanner}/protobuf-java-2.5.0.jar
 %endif
 %{_javadir}/httpcomponents/httpcore.jar
 %{_javadir}/httpcomponents/httpclient.jar
 %{_javadir}/ovirt-engine-sdk-java/ovirt-engine-sdk-java.jar
 %{_javadir}/xpp3.jar"
 
-JBOSS_BUNDLE="target/lib/drools-*
-target/lib/kie-*
-target/lib/optaplanner-*
-%if 0%{?rhel} && 0%{?rhel} < 7
-target/lib/guava-*
-target/lib/protobuf-java-*
-target/lib/commons-math3-*
-%endif
 %if 0%{?rhel}
-target/lib/quartz-*
+JBOSS_BUNDLE="target/lib/quartz-*"
+%else
+JBOSS_BUNDLE=""
 %endif
-%if 0%{?rhel} && 0%{?rhel} >= 7
-target/lib/antlr-*
-%endif
-target/lib/mvel2-*
-target/lib/xstream-*"
 
 
 
@@ -339,6 +341,7 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %files
 %defattr(644, root, root, 755)
 %doc README COPYING
+%attr(755, root, root) /usr/bin/ovirt-optimizer-setup
 %dir %{_javadir}/%{name}
 %{_javadir}/%{name}/*.jar
 %config /etc/%{name}/*
@@ -370,6 +373,10 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %defattr(644, root, root, 755)
 %dir %{_javadir}/%{name}/bundled
 %{_javadir}/%{name}/bundled/*
+%{_optaplanner}
+
+%post dependencies
+/usr/bin/ovirt-optimizer-setup || echo "Optaplanner 6.2.0 could not be installed. Please see the README file for %{name}-%{version} and install it manually"
 
 %changelog
 * Mon Nov 10 2014 Martin Sivak <msivak@redhat.com> 0.6-1
