@@ -102,12 +102,14 @@
             <repositories>
                 <repository>
                     <id>redhat</id>
-                    <url>http://maven.repository.redhat.com/</url>
+                    <url>${redhat.repository}</url>
                 </repository>
             </repositories>
 
             <properties>
+                <redhat.repository>https://maven.repository.redhat.com/techpreview/all</redhat.repository>
                 <optaplanner.version>6.2.0.Final-redhat-4</optaplanner.version>
+                <ovirt-engine.sdk.version>3.6.0.0.Alpha</ovirt-engine.sdk.version>
             </properties>
         </profile>
     </profiles>
