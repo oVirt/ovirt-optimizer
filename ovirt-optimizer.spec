@@ -172,6 +172,9 @@ mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
+%{_javadir}/slf4j/slf4j-api.jar
+%{_javadir}/slf4j/slf4j-log4j12.jar
+%{_javadir}/log4j.jar
 %{_javadir}/commons-beanutils.jar
 %{_javadir}/commons-codec.jar
 %{_javadir}/commons-logging.jar
@@ -271,9 +274,6 @@ JETTY_SYMLINK="%{_javadir}/resteasy/resteasy-cdi.jar
 %{_javadir}/c3p0.jar
 %{_javadir}/javassist.jar
 %{_javadir}/scannotation.jar
-%{_javadir}/slf4j/slf4j-api.jar
-%{_javadir}/slf4j/slf4j-log4j12.jar
-%{_javadir}/log4j.jar
 %{_javadir}/elspec.jar
 %{_javadir}/ecj.jar
 %{_jettydir}/jetty-jmx.jar
