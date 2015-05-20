@@ -2,7 +2,10 @@
 VERSION="6.2.0.Final"
 URL="http://download.jboss.org/optaplanner/release/$VERSION/optaplanner-distribution-$VERSION.zip"
 LOCAL="$HOME/optaplanner-distribution-$VERSION.zip"
+
+# Double checksum to protect against simple collisions
 MD5="f84a2842fcb3effc170545b12ea67c73"
+SHA224="e635aebab78fd3bd9795c74b072114b75265ae948f82a7c76e92809d"
 
 if [ -r "/usr/share/java/optaplanner-distribution-$VERSION" ]; then
     echo "It seems that Optaplanner $VERSION is already installed."
@@ -26,6 +29,14 @@ if [ $? -ne 0 ]; then
     exit 2
 fi
 
+cat <<EOF | sha224sum -c --status -
+$SHA224  $LOCAL
+EOF
+
+if [ $? -ne 0 ]; then
+    echo "Optaplanner $VERSION archive is corrupted, please download $URL and unpack the archive to /usr/share/java"
+    exit 3
+fi
 
 echo "Unpacking Optaplanner to the proper directory"
 pushd /usr/share/java
@@ -33,7 +44,7 @@ unzip $LOCAL &>/dev/null
 
 if [ $? -ne 0 ]; then
     echo "Optaplanner $VERSION archive could not be extracted to /usr/share/java, check your permissions."
-    exit 2
+    exit 4
 else
   rm -f $LOCAL
   echo "Optaplanner is installed."
