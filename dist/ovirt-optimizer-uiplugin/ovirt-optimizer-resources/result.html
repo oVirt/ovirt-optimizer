@@ -395,7 +395,7 @@
 
                 $scope.recomputeResources();
             }).error(function (data, status) {
-                $scope.valid = "Data refresh failed: "+status;
+                $scope.valid = "Could not connect to the optimizer service [status code: "+status+"]";
                 $scope.status = "error";
                 $timeout($scope.refresh, 30000);
             });
