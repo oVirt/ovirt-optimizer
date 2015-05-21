@@ -16,6 +16,54 @@ You can download Optaplanner from http://download.jboss.org/optaplanner/release/
 Or you can use the script ovirt-optimizer-setup that will try to do that
 for you.
 
+HTTP REVERSE PROXY
+
+JBoss is listening on 127.0.0.1 in its default configuration and has no SSL configured. It is common to setup
+a reverse proxy using httpd or nginx to forward the traffic to the web container running optimizer.
+
+- Apache -
+
+cat >/etc/httpd/conf.d/00-optimizer.conf <<EOF
+<VirtualHost *:443>
+    SSLEngine on
+    SSLCertificateFile /etc/pki/tls/certs/optimizer.crt
+    SSLCertificateKeyFile /etc/pki/tls/keys/optimizer.key
+
+    <Location /ovirt-optimizer>
+        ProxyPassMatch http://127.0.0.1:8080 timeout=3600 retry=5
+        <IfModule deflate_module>
+            AddOutputFilterByType DEFLATE text/javascript text/css text/html text/xml text/json application/xml application/json application/x-yaml
+        </IfModule>
+    </Location>
+</VirtualHost>
+EOF
+
+If you are using httpd reverse proxy on RHEL 7.1 with enabled SELinux, you will have to allow
+it to connect to the optimizer service:
+
+setsebool -P httpd_can_network_relay=true
+
+- Nginx -
+
+server {
+    server_name fqdn;
+    listen 443;
+
+    ssl on;
+    ssl_certificate /etc/nginx/ssl/optimizer.crt;
+    ssl_certificate_key /etc/nginx/ssl/optimizer.key;
+
+    location /ovirt-optimizer {
+        proxy_pass http://localhost:8080;
+
+        gzip            on;
+        gzip_min_length 1000;
+        gzip_proxied    expired no-cache no-store private auth;
+        gzip_types      text/plain application/xml application/json;
+    }
+}
+
+
 RUN (USING RPM DISTRIBUTION)
 
 Just start Jetty or Jboss, for example:
