@@ -514,7 +514,9 @@
     resultPage.factory('resultFactory', function ($http) {
         var factory = {};
         factory.getResult = function() {
-            return $http.get(cfg["baseurl"]+clusterid);
+            return $http.get(cfg["baseurl"]+clusterid, {
+                        timeout: 60000
+                    });
         };
         return factory;
     });
@@ -522,7 +524,9 @@
     resultPage.factory('verificationFactory', function ($http) {
         var factory = {};
         factory.getResult = function(data) {
-            return $http.post(cfg["baseurl"]+clusterid+"/score", data);
+            return $http.post(cfg["baseurl"]+clusterid+"/score", data, {
+                timeout: 60000
+            });
         };
         return factory;
     });
