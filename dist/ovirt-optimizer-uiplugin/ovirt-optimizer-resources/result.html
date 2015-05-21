@@ -431,7 +431,7 @@
                     $scope.status = "not-doable";
                 }
             }).error(function (data, status) {
-                $scope.valid = "Solution verification failed with: "+status;
+                $scope.valid = "Could not connect to the verification service [status code: "+status+"]";
                 $scope.status = "error";
                 $timeout($scope.refresh, 30000);
             });
