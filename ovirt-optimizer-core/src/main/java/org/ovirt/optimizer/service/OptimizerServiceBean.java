@@ -233,6 +233,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
 
             r = new Result(cluster);
+            r.setStatus(Result.ResultStatus.OK);
             r.setHardScore(best.getScore().getHardScore());
             r.setSoftScore(best.getScore().getSoftScore());
 

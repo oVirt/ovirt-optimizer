@@ -21,6 +21,7 @@ public class Result implements Serializable {
     String cluster;
     int softScore;
     int hardScore;
+    ResultStatus status = ResultStatus.UNKNOWN;
 
     public Result() {}
     public Result(String cluster) {
@@ -37,6 +38,11 @@ public class Result implements Serializable {
         result.setVms(new HashSet<String>());
         result.setRequestedVms(new HashSet<String>());
         return result;
+    }
+
+    public enum ResultStatus {
+        OK,
+        UNKNOWN;
     }
 
     public Map<String, Set<String>> getHostToVms() {
@@ -117,5 +123,13 @@ public class Result implements Serializable {
 
     public void setRequestedVms(Set<String> requestedVms) {
         this.requestedVms = requestedVms;
+    }
+
+    public ResultStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(ResultStatus status) {
+        this.status = status;
     }
 }

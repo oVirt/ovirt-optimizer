@@ -352,8 +352,13 @@
         $scope.refreshData = function() {
             resultFactory.getResult().success(function (data) {
                 $scope.result = data;
-                $scope.valid = "Solution received";
-                $scope.status = "ok";
+                if ($scope.result.status == "OK") {
+                    $scope.valid = "Solution received";
+                    $scope.status = "ok";
+                } else if ($scope.result.status == "UNKNOWN") {
+                    $scope.valid = "Connection to the optimizer is OK, but there is no solution for this cluster.";
+                    $scope.status = "warning";
+                }
                 $timeout($scope.refresh, 30000);
 
                 /* initialize name cache */
