@@ -1,0 +1,25 @@
+#!/bin/sh
+
+OPTIMIZER_CONF="/usr/share/java/ovirt-optimizer/jboss-conf"
+
+if [ -r /usr/share/ovirt-engine-wildfly ]; then
+    JBOSS_HOME="/usr/share/ovirt-engine-wildfly"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+elif [ -r /usr/share/ovirt-engine-jboss-as ]; then
+    JBOSS_HOME="/usr/share/ovirt-engine-jboss-as"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+elif [ -r /usr/share/wildfly ]; then
+    JBOSS_HOME="/usr/share/wildfly"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+elif [ -r /usr/share/jboss-as ]; then
+    JBOSS_HOME="/usr/share/jboss-as"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+else
+    echo "Please install a compatible JBoss version"
+    exit 1
+fi
+
+JBOSS_BASE_DIR="$OPTIMIZER_CONF"
+
+$JBOSS_HOME/bin/standalone.sh -Djboss.server.base.dir="$JBOSS_BASE_DIR" -Djboss.server.config.dir="$JBOSS_CONFIG_DIR" "$@"
+

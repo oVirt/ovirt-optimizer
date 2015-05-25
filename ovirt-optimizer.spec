@@ -9,30 +9,44 @@
 %if 0%{?rhel} && 0%{?rhel} >= 7
 %global with_jetty 0
 %global with_jboss 1
+%global with_systemd 1
+%global with_sysv 0
+
 # oVirt distribution of JBoss
-%global jboss_deployments /usr/share/ovirt-engine-jboss-as/standalone/deployments
+%global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
 %endif
 
 %if 0%{?rhel} && 0%{?rhel} < 7
 %global with_jetty 0
 %global with_jboss 1
+%global with_systemd 0
+%global with_sysv 1
+
 # oVirt distribution of JBoss
-%global jboss_deployments /usr/share/ovirt-engine-jboss-as/standalone/deployments
+%global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
 %endif
 
 %if 0%{?fedora} && 0%{?fedora} < 20
 %global with_jboss 1
 %global with_jetty 1
+%global with_systemd 1
+%global with_sysv 0
+
 %global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
 %endif
 
 %if 0%{?fedora} && 0%{?fedora} >= 20
-%global with_jboss 0
+%global with_jboss 1
 %global with_jetty 1
+%global with_systemd 1
+%global with_sysv 0
+
+# oVirt distribution of JBoss
+%global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
 %endif
 
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.8
+%define project_version 0.9
 %{!?_version: %define _version %{project_version}}
 %{!?_release: %define _release 1}
 
@@ -90,22 +104,24 @@ This plugin then adds a Tab to the cluster display and presents
 the assingment recommendations to the sysadmin there.
 
 %if 0%{?with_jboss}
-%package jboss7
-Summary:       Integration of the optimization service to Jboss 7.
+%package jboss
+Summary:       Integration of the optimization service to Wildfly.
 Requires:      %{name} = %{version}
 Requires:      %{name}-dependencies = %{version}
 
-%if 0%{?fedora}
-Requires:	   jboss-as >= 7.1.1-9.3
+Requires:      log4j
+
+%if 0%{?fedora} && 0%{?fedora} >= 20
+Requires:	   ovirt-engine-wildfly >= 8.2
 %endif
 
 %if 0%{?rhel}
 # CentOS does not ship jboss, use the package provided by oVirt
-Requires:	   ovirt-engine-jboss-as >= 7.1.1-1
+Requires:	   ovirt-engine-wildfly >= 8.2
 %endif #%if 0%{?rhel}
 
-%description jboss7
-This subpackage deploys the optimizer service to the standard Jboss 7
+%description jboss
+This subpackage deploys the optimizer service to the standard Wildfly
 application server.
 %endif
 
@@ -131,6 +147,7 @@ server.
 
 %package dependencies
 Summary:       Libraries not currently provided by the system, but necessary for the project.
+Requires:      %{name} = %{version}
 
 %description dependencies
 This subpackage bundles libraries that are not provided in the form of RPMs, but are necessary
@@ -149,7 +166,7 @@ mvn %{?with_extra_maven_opts} clean install
 
 # Copy the setup script to the proper place
 install -dm 755 %{buildroot}/usr/bin
-mv dist/ovirt-optimizer-setup %{buildroot}/usr/bin/
+mv dist/bin/ovirt-optimizer-setup %{buildroot}/usr/bin/
 
 # Copy core jars to the proper place
 install -dm 755 %{buildroot}%{_javadir}/%{name}
@@ -160,8 +177,24 @@ mv ovirt-optimizer-core/target/ovirt-optimizer-core.jar %{buildroot}%{_javadir}/
 ln -sf %{_optaplanner_archive} %{buildroot}%{_optaplanner}
 
 ##
-## Jboss7
+## Wildfly
 ##
+
+%if 0%{?with_jboss}
+
+# Install the start script
+mv dist/bin/ovirt-optimizer-jboss %{buildroot}/usr/bin/
+
+install -dm 755 %{buildroot}/etc/init.d
+mv dist/initscript/ovirt-optimizer-jboss %{buildroot}/etc/init.d
+
+# Create the JBoss config directory structure for standalone run
+cp -ar dist/jboss-conf %{buildroot}%{_javadir}/%{name}
+
+# Create the log file directory
+mkdir -p %{buildroot}/var/log/%{name}/jboss
+
+%endif
 
 pushd ovirt-optimizer-jboss7
 
@@ -224,21 +257,23 @@ JBOSS_BUNDLE=""
 %if 0%{?with_jboss}
 
 # Install the exploded Jboss war to javadir
-cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss7.war
+cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss.war
 
-# Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
-echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib @"
+# Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
+echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib @"
 
 # Copy bundled libs to %{buildroot}%{_javadir}/%{name}/bundled
-echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
+if [ "x$JBOSS_BUNDLE" != "x" ]; then
+    echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
+fi
 
-# Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jboss7/WEB-INF/lib
-cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
-symlinks -rc %{buildroot}%{_javadir}/%{name}/jboss7.war/WEB-INF/lib
+# Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
+cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib || true
+symlinks -rc %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib
 
 # Symlink it to Jboss war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jboss_deployments}
-ln -sf %{_javadir}/%{name}/jboss7.war %{buildroot}%{jboss_deployments}/%{name}.war
+ln -sf %{_javadir}/%{name}/jboss.war %{buildroot}%{jboss_deployments}/%{name}.war
 touch %{buildroot}%{jboss_deployments}/%{name}.war.dodeploy
 
 %endif
@@ -304,7 +339,7 @@ echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}
 echo "$JETTY_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
 
 # Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
-cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib || true
 symlinks -rc %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
 
 # Symlink it to Jetty war directory and touch the deploy marker
@@ -355,11 +390,16 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %endif
 
 %if 0%{?with_jboss}
-%files jboss7
+%files jboss
 %defattr(644, root, root, 755)
-%dir %{_javadir}/%{name}/jboss7.war
-%{_javadir}/%{name}/jboss7.war/*
+%dir %{_javadir}/%{name}/jboss.war
+%{_javadir}/%{name}/jboss.war/*
+%dir %{_javadir}/%{name}/jboss-conf
+%{_javadir}/%{name}/jboss-conf/*
 %{jboss_deployments}/*
+%dir /var/log/%{name}/jboss
+%attr(755, root, root) /usr/bin/ovirt-optimizer-jboss
+%attr(755, root, root) /etc/init.d/ovirt-optimizer-jboss
 %endif
 
 %files ui
