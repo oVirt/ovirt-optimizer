@@ -143,7 +143,7 @@ public class ClusterInfoUpdater implements Runnable {
                         && schedulingPolicy.getProperties().getProperties() != null) {
                     schedulingPolicyProperties = schedulingPolicy.getProperties().getProperties();
                 } else {
-                    log.warn("No cluster policy properties found");
+                    log.debug("No cluster policy properties found");
                 }
 
 

@@ -38,7 +38,7 @@ public class ClusterFactChange implements ProblemFactChange {
 
     @Override
     public void doChange(ScoreDirector scoreDirector) {
-        log.info(String.format("Updating facts for cluster %s", clusterId));
+        log.debug(String.format("Updating facts for cluster %s", clusterId));
         OptimalDistributionStepsSolution space = (OptimalDistributionStepsSolution) scoreDirector.getWorkingSolution();
 
         // Create a mapping between hostId and new Host information

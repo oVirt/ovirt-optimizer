@@ -113,7 +113,7 @@ public class ClusterOptimizer implements Runnable {
                     log.debug("Setting destination for {} to {}", migration, hostId);
                 }
                 else {
-                    log.warn("Host {} is no longer valid", hostId);
+                    log.debug("Host {} is no longer valid", hostId);
                 }
 
                 // Inject current VM data
@@ -123,7 +123,7 @@ public class ClusterOptimizer implements Runnable {
                     log.debug("Setting VM for {} to {}", migration, vmId);
                 }
                 else {
-                    log.warn("VM {} is no longer valid", vmId);
+                    log.debug("VM {} is no longer valid", vmId);
                 }
 
                 // Add the step to the list of steps

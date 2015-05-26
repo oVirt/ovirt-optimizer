@@ -75,7 +75,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             return;
         }
 
-        log.info("Discovering clusters...");
+        log.debug("Discovering clusters...");
         Set<String> availableClusters = discovery.getClusters();
         if (availableClusters == null) {
             log.error("Cluster discovery failed");
@@ -141,7 +141,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             }
         }
 
-        log.info("Waiting for threads to finish");
+        log.debug("Waiting for threads to finish");
         // Iterate over copy of the set as the ending threads will
         // be removed by callback
         for (Thread thread: new ArrayList<>(threads)) {

@@ -31,10 +31,10 @@ public class ClusterDiscovery {
         Set<String> clusters = new HashSet<>();
 
         try {
-            log.info("Starting cluster discovery");
+            log.debug("Starting cluster discovery");
             Api engine = ovirtClient.connect();
 
-            log.info("Processing clusters...");
+            log.debug("Processing clusters...");
             for (Cluster cluster: engine.getClusters().list()) {
                 log.debug(String.format("Discovered cluster %s (%s)", cluster.getName(), cluster.getId()));
                 clusters.add(cluster.getId());
