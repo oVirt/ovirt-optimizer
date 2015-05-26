@@ -1,0 +1,11 @@
+[Unit]
+Description=oVirt optimizer service
+Documentation=http://ovirt.org/
+
+[Service]
+ExecStart=/usr/bin/ovirt-optimizer-jboss
+ExecStop=/usr/bin/ovirt-optimizer-jboss stop
+
+[Install]
+WantedBy=multi-user.target
+

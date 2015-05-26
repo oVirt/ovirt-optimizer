@@ -19,7 +19,20 @@ else
     exit 1
 fi
 
+# Stop command with JBoss autodetection
+if [ "x$1" == "xstop" ]; then
+    $JBOSS_HOME/bin/jboss-cli.sh --controller=localhost:9990 --commands=connect,shutdown
+    exit 0
+fi
+
 JBOSS_BASE_DIR="$OPTIMIZER_CONF"
+
+# Check for Optaplanner presence
+ls /usr/share/java/ovirt-optimizer/optaplanner/optaplanner-* &>/dev/null
+if [ $? -ne 0 ]; then
+    echo "Optaplanner seems to be missing. Please execute ovirt-optimizer-setup." 1>&2
+    exit 1
+fi
 
 $JBOSS_HOME/bin/standalone.sh -Djboss.server.base.dir="$JBOSS_BASE_DIR" -Djboss.server.config.dir="$JBOSS_CONFIG_DIR" "$@"
 

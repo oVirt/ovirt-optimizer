@@ -5,8 +5,8 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Start ovirt-optimizer-wildfly at boot time
-# Description:       Enable ovirt-optimizer-wildfly service
+# Short-Description: Start ovirt-optimizer-jboss at boot time
+# Description:       Enable ovirt-optimizer-jboss service
 ### END INIT INFO
 
 dir="/usr/share/java/ovirt-optimizer/jboss-conf"
@@ -30,7 +30,7 @@ is_running() {
 }
 
 stop() {
-    /usr/share/ovirt-engine-wildfly/bin/jboss-cli.sh --controller=$MANAGEMENT_HOST:$MANAGEMENT_PORT --commands=connect,shutdown
+    $cmd stop
 }
 
 case "$1" in
@@ -42,6 +42,7 @@ case "$1" in
         cd "$dir"
         sudo -u "$user" $cmd >> "$stdout_log" 2>> "$stderr_log" &
         echo $! > "$pid_file"
+        sleep 1
         if ! is_running; then
             echo "Unable to start, see $stdout_log and $stderr_log"
             exit 1

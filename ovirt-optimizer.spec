@@ -105,9 +105,22 @@ the assingment recommendations to the sysadmin there.
 
 %if 0%{?with_jboss}
 %package jboss
-Summary:       Integration of the optimization service to Wildfly.
+Summary:       Integration of the optimization service to JBoss 7 and Wildfly.
+Provides:      %{name}-jboss7 = %{version}
+Provides:      %{name}-wildfly = %{version}
 Requires:      %{name} = %{version}
 Requires:      %{name}-dependencies = %{version}
+
+%if %{?with_systemd}
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+BuildRequires: systemd
+%endif
+
+%if %{?with_sysv}
+Requires:      sudo
+%endif
 
 Requires:      log4j
 
@@ -185,8 +198,15 @@ ln -sf %{_optaplanner_archive} %{buildroot}%{_optaplanner}
 # Install the start script
 mv dist/bin/ovirt-optimizer-jboss %{buildroot}/usr/bin/
 
+%if %{?with_sysv}
 install -dm 755 %{buildroot}/etc/init.d
 mv dist/initscript/ovirt-optimizer-jboss %{buildroot}/etc/init.d
+%endif
+
+%if %{?with_systemd}
+install -dm 755 %{buildroot}%{_unitdir}
+mv dist/initscript/ovirt-optimizer-jboss.service %{buildroot}%{_unitdir}
+%endif
 
 # Create the JBoss config directory structure for standalone run
 cp -ar dist/jboss-conf %{buildroot}%{_javadir}/%{name}
@@ -399,7 +419,14 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{jboss_deployments}/*
 %dir /var/log/%{name}/jboss
 %attr(755, root, root) /usr/bin/ovirt-optimizer-jboss
+
+# Initscripts
+%if %{?with_sysv}
 %attr(755, root, root) /etc/init.d/ovirt-optimizer-jboss
+%endif
+%if %{?with_systemd}
+%{_unitdir}/ovirt-optimizer-jboss.service
+%endif
 %endif
 
 %files ui
@@ -417,6 +444,18 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %post dependencies
 /usr/bin/ovirt-optimizer-setup || echo "Optaplanner 6.2.0 could not be installed. Please see the README file for %{name}-%{version} and install it manually"
+
+# Systemd scripts
+%if %{?with_systemd} && %{?with_jboss}
+%post jboss
+%systemd_post ovirt-optimizer-jboss.service
+
+%preun jboss
+%systemd_preun ovirt-optimizer-jboss.service
+
+%postun jboss
+%systemd_postun_with_restart ovirt-optimizer-jboss.service
+%endif
 
 %changelog
 * Mon Nov 10 2014 Martin Sivak <msivak@redhat.com> 0.6-1
