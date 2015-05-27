@@ -45,7 +45,6 @@
                     <!-- So maven doesn't require web.xml -->
                     <failOnMissingWebXml>false</failOnMissingWebXml>
                     <filteringDeploymentDescriptors>true</filteringDeploymentDescriptors>
-                    <packagingExcludes>WEB-INF/deploy/**,WEB-INF/classes/**</packagingExcludes>
                 </configuration>
                 <executions>
                     <execution>
