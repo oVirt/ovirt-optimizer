@@ -11,6 +11,9 @@ elif [ -r /usr/share/ovirt-engine-jboss-as ]; then
 elif [ -r /usr/share/wildfly ]; then
     JBOSS_HOME="/usr/share/wildfly"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+elif [ -r /usr/share/jbossas ]; then
+    JBOSS_HOME="/usr/share/jbossas"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
 elif [ -r /usr/share/jboss-as ]; then
     JBOSS_HOME="/usr/share/jboss-as"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
