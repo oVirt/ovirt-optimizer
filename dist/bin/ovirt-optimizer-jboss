@@ -5,18 +5,23 @@ OPTIMIZER_CONF="/usr/share/java/ovirt-optimizer/jboss-conf"
 if [ -r /usr/share/ovirt-engine-wildfly ]; then
     JBOSS_HOME="/usr/share/ovirt-engine-wildfly"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+    JBOSS_MGMT_PORT=9990
 elif [ -r /usr/share/ovirt-engine-jboss-as ]; then
     JBOSS_HOME="/usr/share/ovirt-engine-jboss-as"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+    JBOSS_MGMT_PORT=9999
 elif [ -r /usr/share/wildfly ]; then
     JBOSS_HOME="/usr/share/wildfly"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+    JBOSS_MGMT_PORT=9990
 elif [ -r /usr/share/jbossas ]; then
     JBOSS_HOME="/usr/share/jbossas"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+    JBOSS_MGMT_PORT=9999
 elif [ -r /usr/share/jboss-as ]; then
     JBOSS_HOME="/usr/share/jboss-as"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+    JBOSS_MGMT_PORT=9999
 else
     echo "Please install a compatible JBoss version"
     exit 1
@@ -24,7 +29,7 @@ fi
 
 # Stop command with JBoss autodetection
 if [ "x$1" == "xstop" ]; then
-    $JBOSS_HOME/bin/jboss-cli.sh --controller=localhost:9990 --commands=connect,shutdown
+    $JBOSS_HOME/bin/jboss-cli.sh --controller=localhost:$JBOSS_MGMT_PORT --connect --commands=shutdown
     exit 0
 fi
 
