@@ -459,6 +459,27 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %endif
 
 %changelog
+* Wed May 27 2015 Martin Sivak <msivak@redhat.com> 0.9-1
+- Proper service files for SysV and systemd
+- ovirt-optimizer-setup tool
+- Optaplanner is no longer bundled but the setup tool downloads
+  it from the official web page (download is md5/sha224 checksum
+  protected)
+- Support for Wildfly
+
+* Thu May 7 2015 Martin Sivak <msivak@redhat.com> 0.8-1
+- UI improvements and bug fixes
+- Optimizer no longer forgets half of the solution
+  after fact update
+- Support for hosted engine VM and hosts
+
+* Fri Mar 6 2015 Martin Sivak <msivak@redhat.com> 0.5-1
+- Support for custom scheduling rules
+- Proper login procedure to ovirt-engine's REST API
+- UI improvements and bug fixes
+- PinToHost fixes
+- Do not propose starting a VM that was not requested
+
 * Mon Nov 10 2014 Martin Sivak <msivak@redhat.com> 0.6-1
 - Fix uuid matching rules for even distribution policies
   Resolves: rhbz#1156141
