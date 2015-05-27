@@ -6,7 +6,7 @@ Install ovirt-optimizer for jboss or jetty using:
 
 yum install ovirt-optimizer-jetty
 or
-yum install ovirt-optimizer-jboss7
+yum install ovirt-optimizer-jboss
 
 Unpack the Optaplanner 6.2.0 to /usr/share/java which should create a directory
 /usr/share/java/optaplanner-distribution-6.2.0.Final
@@ -66,9 +66,11 @@ server {
 
 RUN (USING RPM DISTRIBUTION)
 
-Just start Jetty or Jboss, for example:
+service ovirt-optimizer-jboss start
+systemctl start ovirt-optimizer-jboss
 
-systemctl start jboss-as
+or start Jetty (using its own service files)
+
 
 RUN (USING SOURCE  DISTRIBUTION)
 
