@@ -211,8 +211,9 @@ mv dist/initscript/ovirt-optimizer-jboss.service %{buildroot}%{_unitdir}
 # Create the JBoss config directory structure for standalone run
 cp -ar dist/jboss-conf %{buildroot}%{_javadir}/%{name}
 
-# Create the log file directory
+# Create the log file directory and link it
 mkdir -p %{buildroot}/var/log/%{name}/jboss
+ln -sf /var/log/%{name}/jboss %{buildroot}%{_javadir}/%{name}/jboss-conf/log
 
 %endif
 
