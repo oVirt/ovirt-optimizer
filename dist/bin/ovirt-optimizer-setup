@@ -1,23 +1,37 @@
 #!/bin/sh
+NAME="Optaplanner"
 VERSION="6.2.0.Final"
 URL="http://download.jboss.org/optaplanner/release/$VERSION/optaplanner-distribution-$VERSION.zip"
 LOCAL="$HOME/optaplanner-distribution-$VERSION.zip"
+DEPLOYMENT="/usr/share/java/optaplanner-distribution-$VERSION"
 
 # Double checksum to protect against simple collisions
 MD5="f84a2842fcb3effc170545b12ea67c73"
 SHA224="e635aebab78fd3bd9795c74b072114b75265ae948f82a7c76e92809d"
 
-if [ -r "/usr/share/java/optaplanner-distribution-$VERSION" ]; then
-    echo "It seems that Optaplanner $VERSION is already installed."
+### There should be no need to edit anything below this line ###
+
+function manualdl() {
+    echo "Please download $URL and execute $0 <downloaded file>"
+}
+
+if [ -r "$DEPLOYMENT" ]; then
+    echo "It seems that $NAME $VERSION is already installed."
     exit 0
 fi
 
-echo "Trying to download Optaplanner $VERSION [this might take a while]"
-curl $URL >$LOCAL
+if [ $# -gt 0 ]; then
+    LOCAL=$(readlink -f $1)
+    echo "Using local file $LOCAL."
+else
+    echo "Trying to download $NAME $VERSION [this might take a while]"
+    curl $URL >$LOCAL
 
-if [ ! -r $LOCAL ]; then
-    echo "Optaplanner $VERSION could not be downloaded, please download $URL and unpack the archive to /usr/share/java"
-    exit 1
+    if [ ! -r $LOCAL ]; then
+        echo "$NAME $VERSION could not be downloaded."
+        manualdl
+        exit 1
+    fi
 fi
 
 cat <<EOF | md5sum -c --status -
@@ -25,7 +39,8 @@ $MD5  $LOCAL
 EOF
 
 if [ $? -ne 0 ]; then
-    echo "Optaplanner $VERSION archive is corrupted, please download $URL and unpack the archive to /usr/share/java"
+    echo "$NAME $VERSION archive is corrupted."
+    manualdl
     exit 2
 fi
 
@@ -34,20 +49,20 @@ $SHA224  $LOCAL
 EOF
 
 if [ $? -ne 0 ]; then
-    echo "Optaplanner $VERSION archive is corrupted, please download $URL and unpack the archive to /usr/share/java"
+    echo "$NAME $VERSION archive is corrupted."
+    manualdl
     exit 3
 fi
 
-echo "Unpacking Optaplanner to the proper directory"
+echo "Unpacking $NAME to the proper directory"
 pushd /usr/share/java
 unzip $LOCAL &>/dev/null
 
 if [ $? -ne 0 ]; then
-    echo "Optaplanner $VERSION archive could not be extracted to /usr/share/java, check your permissions."
+    echo "$NAME $VERSION archive could not be extracted to /usr/share/java, check your permissions."
     exit 4
 else
-  rm -f $LOCAL
-  echo "Optaplanner is installed."
+  echo "$NAME is installed."
 fi
 
 popd
