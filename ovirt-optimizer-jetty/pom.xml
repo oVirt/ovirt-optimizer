@@ -15,7 +15,7 @@
         <dependency>
             <groupId>org.jboss.weld.servlet</groupId>
             <artifactId>weld-servlet</artifactId>
-            <version>2.1.2.Final</version>
+            <version>2.2.14.Final</version>
         </dependency>
         <dependency>
             <artifactId>ovirt-optimizer-core</artifactId>
@@ -57,7 +57,7 @@
     </dependencies>
 
     <properties>
-        <jettyVersion>9.1.5.v20140505</jettyVersion>
+        <jettyVersion>9.3.1.v20150714</jettyVersion>
     </properties>
 
     <build>
