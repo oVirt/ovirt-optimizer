@@ -57,7 +57,7 @@
     </dependencies>
 
     <properties>
-        <jettyVersion>9.3.1.v20150714</jettyVersion>
+        <jettyVersion>9.2.12.v20150709</jettyVersion>
     </properties>
 
     <build>
