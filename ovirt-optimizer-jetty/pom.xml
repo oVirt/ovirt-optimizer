@@ -95,7 +95,9 @@
                 <artifactId>jetty-maven-plugin</artifactId>
                 <version>${jettyVersion}</version>
                 <configuration>
-                    <contextPath>/ovirt-optimizer</contextPath>
+                    <webApp>
+                        <contextPath>/ovirt-optimizer</contextPath>
+                    </webApp>
                     <stopPort>1353</stopPort>
                     <stopKey>quit</stopKey>
                     <jvmArgs>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005</jvmArgs>
