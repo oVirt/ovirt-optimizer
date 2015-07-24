@@ -1,6 +1,5 @@
 package org.ovirt.optimizer.util;
 
-import com.google.common.base.Predicate;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -16,6 +15,7 @@ public class ConfigProvider {
     public static final String SDK_SERVER = "org.ovirt.optimizer.sdk.server";
     public static final String SDK_PORT = "org.ovirt.optimizer.sdk.port";
     public static final String SDK_PROTOCOL = "org.ovirt.optimizer.sdk.protocol";
+    public static final String SDK_REQUEST_TIMEOUT = "org.ovirt.optimizer.sdk.connection.timeout";
     public static final String SDK_USERNAME = "org.ovirt.optimizer.sdk.username";
     public static final String SDK_PASSWORD = "org.ovirt.optimizer.sdk.password";
     public static final String SDK_CA_STORE = "org.ovirt.optimizer.sdk.ca.store";
@@ -44,6 +44,7 @@ public class ConfigProvider {
         config.setProperty(SDK_USERNAME, "admin@internal");
         config.setProperty(SDK_PASSWORD, "letmein");
         config.setProperty(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
+        config.setProperty(SDK_REQUEST_TIMEOUT, "10");
         config.setProperty(SOLVER_STEPS, "10");
         config.setProperty(SOLVER_TIMEOUT, "30");
         config.setProperty(SOLVER_DATA_REFRESH, "60");

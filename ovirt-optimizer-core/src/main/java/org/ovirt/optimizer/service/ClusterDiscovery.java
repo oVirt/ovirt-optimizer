@@ -32,7 +32,7 @@ public class ClusterDiscovery {
 
         try {
             log.debug("Starting cluster discovery");
-            Api engine = ovirtClient.connect();
+            Api engine = ovirtClient.getConnection();
 
             log.debug("Processing clusters...");
             for (Cluster cluster: engine.getClusters().list()) {

@@ -7,7 +7,8 @@ import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.ManagedBean;
+import javax.inject.Singleton;
+
 import java.io.IOException;
 import java.util.Properties;
 
@@ -25,7 +26,7 @@ import java.util.Properties;
  * The location of the config file can be changed with the environment variable
  *   OVIRT_OPTIMIZER_CONFIG
  */
-@ManagedBean
+@Singleton
 public class OvirtClient {
 
     static private Logger log = LoggerFactory.getLogger(OvirtClient.class);
@@ -36,8 +37,10 @@ public class OvirtClient {
     String username;
     String password;
     String caStore;
+    private int requestTimeout;
 
     final Properties config;
+    private Api api;
 
     public OvirtClient() {
         /* Create config with default values */
@@ -49,12 +52,16 @@ public class OvirtClient {
         this.username = config.getProperty(ConfigProvider.SDK_USERNAME);
         this.password = config.getProperty(ConfigProvider.SDK_PASSWORD);
         this.caStore = config.getProperty(ConfigProvider.SDK_CA_STORE);
+        this.requestTimeout = Integer.valueOf(config.getProperty(ConfigProvider.SDK_REQUEST_TIMEOUT)) * 1000;
+        this.api = null;
     }
 
-    public Api connect()
-            throws UnsecuredConnectionAttemptError, ServerException, IOException {
-        String url = String.format("%s://%s:%s/ovirt-engine/api", protocol, server, port);
-        log.debug(String.format("Logging to %s as %s", url, username));
-        return new Api(url, username, password, true);
+    public synchronized Api getConnection() throws UnsecuredConnectionAttemptError, ServerException, IOException {
+        if (api == null) {
+            String url = String.format("%s://%s:%s/ovirt-engine/api", protocol, server, port);
+            log.debug(String.format("Logging to %s as %s", url, username));
+            api = new Api(url, username, password, null, null, requestTimeout, true, true, null, false);
+        }
+        return api;
     }
 }
