@@ -68,7 +68,7 @@ public class ClusterInfoUpdater implements Runnable {
             Set<Object> facts = new HashSet<>();
 
             try {
-                Api engine = ovirtClient.connect();
+                Api engine = ovirtClient.getConnection();
 
                 Cluster clusterInstance = engine.getClusters().getById(clusterId);
                 DataCenter dataCenter = clusterInstance.getDataCenter();
