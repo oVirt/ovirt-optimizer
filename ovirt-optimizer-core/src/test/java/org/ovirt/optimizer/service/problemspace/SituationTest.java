@@ -87,7 +87,7 @@ public class SituationTest {
                 .startVm(vm)
                 .addMigration(vm2, host2)
                 .addMigration(vm, host)
-                .enablePolicyUnit(PolicyUnit.BALANCE_VM_COUNT)
+                .enablePolicyUnit(PolicyUnit.EVEN_GUEST_DIST_WEIGHT)
                 .enablePolicyUnit(PolicyUnit.PIN_TO_HOST_FILTER)
                 .score();
 
@@ -341,6 +341,35 @@ public class SituationTest {
         assertNotEquals(0, result.getHardScore());
         // -1 for a single performed migration
         assertEquals(-1, result.getSoftScore());
+    }
+
+    /**
+     * Test whether VM can be run on host with enough cores and
+     * cannot be run on host with not enough cores
+     */
+    @Test
+    public void testNotEnoughCores(){
+        TestOptimizer optimizer = new TestOptimizer();
+
+        Host host = optimizer.createHost("H1", 1000000000L);
+        host.getCpu().getTopology().setSockets(1);
+        host.getCpu().getTopology().setCores(2);
+
+        VM vm = optimizer.createVm("VM-A", 10000000L);
+        vm.getCpu().getTopology().setSockets(1);
+        vm.getCpu().getTopology().setCores(2);
+
+        optimizer.enablePolicyUnit(PolicyUnit.CPU_FILTER)
+                .startVm(vm)
+                .addMigration(vm,host);
+
+        HardSoftScore r1 = optimizer.score();
+
+        vm.getCpu().getTopology().setCores(4);
+        HardSoftScore r2 = optimizer.score();
+
+        assertEquals(0, r1.getHardScore());
+        assertNotEquals(0, r2.getHardScore());
     }
 }
 

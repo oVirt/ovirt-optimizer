@@ -11,9 +11,13 @@ import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.optimizer.util.RuleLogger;
 
 import org.ovirt.optimizer.service.facts.RunningVm;
-import org.ovirt.optimizer.service.facts.CountThreadsAsCores;
 import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.service.facts.PolicyUnit;
+import org.ovirt.optimizer.service.facts.PolicyProperty;
+import org.ovirt.optimizer.service.facts.VmStats;
+import org.ovirt.optimizer.service.facts.HostStats;
+import org.ovirt.optimizer.service.facts.HostInfo;
+import org.ovirt.optimizer.service.facts.VmInfo;
 
 global HardSoftScoreHolder scoreHolder;
 
@@ -109,42 +113,116 @@ end
 rule "notEnoughCores"
     when
         exists PolicyUnitEnabled(uuid == PolicyUnit.CPU_FILTER.uuid)
-        not(exists CountThreadsAsCores())
         $step: Migration(valid == true || finalStep == true, $destination: destination)
-        $host: Host($step.finalStep == true || id == $destination.id,
-                    cpu.topology != null, $cores: cpu.topology.cores != null)
-        $vm : VM($vmId : id,
-                 $step.getAssignment($vmId) == $host.id,
-                 cpu.topology != null,
-                 $requiredCpus : cpu.topology.cores,
-                 $requiredCpus != null,
-                 $requiredCpus > $cores)
+        Host( $id : id, $step.finalStep == true || id == $destination.id )
+        HostInfo(id == $id, $cores : totalCores)
+        VM($vmId : id, $step.getAssignment($vmId) == $id)
+        VmInfo(id == $vmId, $requiredCores : totalCores, $requiredCores > $cores)
         exists RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpus);
+        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCores);
 end
 
-rule "notEnoughThreads"
+
+// org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionBalancePolicyUnit
+// org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionWeightPolicyUnit
+// TODO consider each pair of hosts only once?
+rule "evenDistributionCpu"
     when
-        exists PolicyUnitEnabled(uuid == PolicyUnit.CPU_FILTER.uuid)
-        exists CountThreadsAsCores()
-        $step: Migration(valid == true || finalStep == true, $destination: destination)
-        $host: Host($step.finalStep == true || id == $destination.id,
-                    cpu.topology != null, $cores: cpu.topology.threads, $cores != null)
-        $vm : VM($vmId : id,
-                 $step.getAssignment($vmId) == $host.id,
-                 cpu.topology != null,
-                 $requiredCpus : cpu.topology.cores,
-                 $requiredCpus != null,
-                 $requiredCpus > $cores)
-        exists RunningVm(id == $vmId)
+        PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid || == PolicyUnit.NONE_WEIGHT.uuid, $factor : factor)
+        $finalStep : Migration(finalStep == true)
+        Host( $id1 : id )
+        HostInfo(id == $id1, $cores1 : totalCores)
+        Host( $id2 : id , $id1 != $id2)
+        HostInfo(id == $id2, $cores2 : totalCores)
+        $cpuTotal1 : Number() from accumulate(
+             VM($vmId1 : id,
+                $finalStep.getAssignment($vmId1) == $id1)
+              and VmInfo(id == $vmId1, $vmCores : totalCores)
+              and VmStats(id == $vmId1, $cpu : cpuCurrentTotal)
+              and exists RunningVm(id == $vmId1),
+             sum($cpu * $vmCores)
+        )
+        $cpuTotal2 : Number() from accumulate(
+             VM($vmId2 : id,
+                $finalStep.getAssignment($vmId2) == $id2)
+              and VmInfo(id == $vmId2, $vmCores : totalCores)
+              and VmStats(id == $vmId2, $cpu : cpuCurrentTotal)
+              and exists RunningVm(id == $vmId2),
+             sum($cpu * $vmCores)
+        )
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCpus);
+        float hostUtil1 = $cpuTotal1.floatValue() / $cores1.floatValue();
+        float hostUtil2 = $cpuTotal2.floatValue() / $cores2.floatValue();
+        scoreHolder.addSoftConstraintMatch(kcontext, (int)(-(Math.abs( hostUtil1 - hostUtil2 )) * $factor ));
+end
+
+rule "evenDistributionMemory"
+   when
+       PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid || == PolicyUnit.NONE_WEIGHT.uuid, $factor : factor)
+       $finalStep: Migration(finalStep == true)
+       Host($id1 : id, $mem1 : memory)
+       Host($id2 : id, $id1 != $id2, $mem2 : memory)
+       $requiredMemoryTotal1 : Number() from accumulate(
+               VM($vmId1 : id,
+                  $finalStep.getAssignment($vmId1) == $id1,
+                  $requiredMemory : memoryPolicy.guaranteed)
+                and exists RunningVm(id == $vmId1),
+               sum($requiredMemory)
+       )
+       $requiredMemoryTotal2 : Number() from accumulate(
+               VM($vmId2 : id,
+                  $finalStep.getAssignment($vmId2) == $id2,
+                  $requiredMemory2 : memoryPolicy.guaranteed)
+               and exists RunningVm(id == $vmId2),
+               sum($requiredMemory2)
+       )
+   then
+       //RuleLogger.info(kcontext, "Host1: {} mem {} vs. Host2: {} mem {} score {}", $id1, $requiredMemoryTotal1.longValue(), $id2, $requiredMemoryTotal2.longValue(), (int)(-Math.abs($requiredMemoryTotal1.longValue() - $requiredMemoryTotal2.longValue())/(1024*1024)));
+       float memUtil1 = $requiredMemoryTotal1.floatValue() / $mem1;
+       float memUtil2 = $requiredMemoryTotal2.floatValue() / $mem2;
+       scoreHolder.addSoftConstraintMatch(kcontext, $factor * (int)( -100.0f * Math.abs(memUtil1 - memUtil2)));
 end
 
 
-// TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionBalancePolicyUnit
-// TODO org.ovirt.engine.core.bll.scheduling.policyunits.EvenDistributionWeightPolicyUnit
+rule "cpuHighUtilization"
+    when
+        PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid || == PolicyUnit.NONE_WEIGHT.uuid ||
+            == PolicyUnit.POWER_SAVING_WEIGHT.uuid, $factor : factor)
+        Property( name == PolicyProperty.HIGH_UTIL.getName(), $highUtilThreshold : Float.parseFloat(value) )
+        $finalStep: Migration(finalStep == true)
+        Host($id : id)
+        HostInfo(id == $id, $cores : totalCores != null)
+        Number ( (floatValue / $cores) > $highUtilThreshold ) from accumulate(
+             VM($vmId : id,  $finalStep.getAssignment($vmId) == $id)
+             and VmInfo(id == $vmId, $vmCores : totalCores != null)
+             and VmStats(id == $vmId, $vmCpu : cpuCurrentTotal != null)
+             and exists RunningVm(id == $vmId),
+             sum($vmCpu * $vmCores)
+        )
+    then
+        // using large constant
+        scoreHolder.addSoftConstraintMatch(kcontext, -100000 * $factor);
+end
+
+
+rule "memoryHighUtilization"
+    when
+        PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid || == PolicyUnit.NONE_WEIGHT.uuid ||
+            == PolicyUnit.POWER_SAVING_WEIGHT.uuid, $factor : factor)
+        Property( name == PolicyProperty.MAX_FREE_MEM_OVER_UTIL.getName(), $maxFreeMem : Long.parseLong(value) )
+        $finalStep: Migration(finalStep == true)
+        Host($id : id, $hostMem : memory)
+        Number ( longValue > ($hostMem - $maxFreeMem) ) from accumulate(
+             VM($vmId : id,  $finalStep.getAssignment($vmId) == $id, $vmMem : memoryPolicy.guaranteed)
+             and VmInfo(id == $vmId)
+             and exists RunningVm(id == $vmId),
+             sum($vmMem)
+        )
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -100000 * $factor);
+end
+
 
 // org.ovirt.engine.core.bll.scheduling.policyunits.HostedEngineHAClusterFilterPolicyUnit
 rule "hostedEngineClusterFilter"
@@ -226,9 +304,6 @@ rule "pinToHostStart"
         scoreHolder.addHardConstraintMatch(kcontext, -1);
 end
 
-// TODO PowerSavingBalancePolicyUnit
-// TODO PowerSavingWeightPolicyUnit
-
 // Additional rules
 
 // Ensure all VMs are assigned as soon as possible
@@ -294,37 +369,11 @@ rule "vmsAvailable"
         scoreHolder.addSoftConstraintMatch(kcontext, 1);
 end */
 
-// Balanced memory proof of concept
-// this is the memory analogy to OptimalForEvenDistribution unit
-rule "balancedMemory"
-   when
-       (or PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid, $factor : factor)
-           PolicyUnitEnabled(uuid == PolicyUnit.NONE_WEIGHT.uuid, $factor : factor))
-       $finalStep: Migration(finalStep == true)
-       Host($id1 : id)
-       Host($id2 : id, $id1 != $id2)
-       $requiredMemoryTotal1 : Number() from accumulate(
-               VM($vmId1 : id,
-                  $finalStep.getAssignment($vmId1) == $id1,
-                  $requiredMemory : memoryPolicy.guaranteed)
-                and exists RunningVm(id == $vmId1),
-               sum($requiredMemory)
-       )
-       $requiredMemoryTotal2 : Number() from accumulate(
-               VM($vmId2 : id,
-                  $finalStep.getAssignment($vmId2) == $id2,
-                  $requiredMemory2 : memoryPolicy.guaranteed)
-               and exists RunningVm(id == $vmId2),
-               sum($requiredMemory2)
-       )
-   then
-       //RuleLogger.info(kcontext, "Host1: {} mem {} vs. Host2: {} mem {} score {}", $id1, $requiredMemoryTotal1.longValue(), $id2, $requiredMemoryTotal2.longValue(), (int)(-Math.abs($requiredMemoryTotal1.longValue() - $requiredMemoryTotal2.longValue())/(1024*1024)));
-       scoreHolder.addSoftConstraintMatch(kcontext, $factor * (int)(-(Math.abs($requiredMemoryTotal1.longValue() - $requiredMemoryTotal2.longValue())/(1024*1024))));
-end
 
-// this is the memory analogy to OptimalForPowerSaving unit
-// it reduces the soft score by 1 when a non-empty host is encountered
-rule "consolidatedMemory"
+
+// OptimalForPowerSaving unit
+// reduces the soft score by 1 when a non-empty host is encountered
+rule "consolidateVMs"
    when
        PolicyUnitEnabled(uuid == PolicyUnit.POWER_SAVING_WEIGHT.uuid, $factor : factor)
        $finalStep: Migration(finalStep == true)
@@ -335,28 +384,26 @@ rule "consolidatedMemory"
            RunningVm(id == $vmId)
        )
    then
-       scoreHolder.addSoftConstraintMatch(kcontext, -1 * $factor);
+       scoreHolder.addSoftConstraintMatch(kcontext, -1000 * $factor);
 end
 
 // OptimalForEvenGuestDistribution
 rule "balancedVmCount"
    when
-       PolicyUnitEnabled(uuid == PolicyUnit.BALANCE_VM_COUNT.uuid, $factor: factor)
-       Property(name == "MigrationThreshold", $migrationThreshold : value)
+       PolicyUnitEnabled(uuid == PolicyUnit.EVEN_GUEST_DIST_WEIGHT.uuid, $factor: factor)
+       Property(name == PolicyProperty.MIGRATION_THRESHOLD.getName, $migrationThreshold : value)
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
        Host($id2 : id, $id1 != $id2)
        $vmCount1 : Number() from accumulate(
                VM($vmId1 : id,
-                  $finalStep.getAssignment($vmId1) == $id1,
-                  $requiredMemory : memoryPolicy.guaranteed)
-                and exists RunningVm(id == $vmId1),
+                  $finalStep.getAssignment($vmId1) == $id1)
+               and exists RunningVm(id == $vmId1),
                sum(1)
        )
        $vmCount2 : Number(Math.abs(intValue - $vmCount1.intValue()) > $migrationThreshold) from accumulate(
                VM($vmId2 : id,
-                  $finalStep.getAssignment($vmId2) == $id2,
-                  $requiredMemory2 : memoryPolicy.guaranteed)
+                  $finalStep.getAssignment($vmId2) == $id2)
                and exists RunningVm(id == $vmId2),
                sum(1)
        )

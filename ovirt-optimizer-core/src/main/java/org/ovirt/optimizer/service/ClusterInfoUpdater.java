@@ -1,22 +1,27 @@
 package org.ovirt.optimizer.service;
 
-import org.apache.http.conn.HttpHostConnectException;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.decorators.Cluster;
+import org.ovirt.engine.sdk.decorators.HostStatistics;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicy;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicyBalance;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicyFilter;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicyWeight;
-import org.ovirt.engine.sdk.decorators.SchedulingPolicyWeights;
+import org.ovirt.engine.sdk.decorators.VMStatistics;
 import org.ovirt.engine.sdk.entities.DataCenter;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.Property;
+import org.ovirt.engine.sdk.entities.Statistic;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.ovirt.optimizer.service.facts.HostInfo;
+import org.ovirt.optimizer.service.facts.HostStats;
 import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.service.facts.VmInfo;
+import org.ovirt.optimizer.service.facts.VmStats;
 import org.ovirt.optimizer.util.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +31,6 @@ import java.net.ConnectException;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * This class implements a thread that monitors a cluster for
@@ -56,6 +60,7 @@ public class ClusterInfoUpdater implements Runnable {
         return clusterId;
     }
 
+
     @Override
     public void run() {
         log.info(String.format("Updater thread for %s starting", clusterId));
@@ -73,6 +78,8 @@ public class ClusterInfoUpdater implements Runnable {
                 Cluster clusterInstance = engine.getClusters().getById(clusterId);
                 DataCenter dataCenter = clusterInstance.getDataCenter();
 
+                boolean threadsAsCores = clusterInstance.getThreadsAsCores();
+
                 // Ask for all content (needed to get hosted engine info)
                 for (Host host: engine.getHosts().list(null, null, null, "true")) {
                     if (host.getCluster().getId().equals(clusterId)) {
@@ -85,6 +92,21 @@ public class ClusterInfoUpdater implements Runnable {
                             /* Add the host to fact database */
                             hosts.add(host);
                             hostIds.add(host.getId());
+
+                            // Compile host statistics and add them to fact database
+
+                            // Interestingly the typecast has to be to different object than
+                            // the parameter of Host.setStatistics()
+                            HostStatistics stats = (HostStatistics) host.getStatistics();
+
+                            HostStats hostStats = new HostStats(host.getId());
+                            for (Statistic stat : stats.list()){
+                                hostStats.loadValue(stat);
+                            }
+                            facts.add(hostStats);
+
+                            // Add additional host info
+                            facts.add(HostInfo.createFromHost(host, threadsAsCores));
                         }
                     }
                 }
@@ -95,10 +117,26 @@ public class ClusterInfoUpdater implements Runnable {
                             hostIds.contains(runningAt.getId())) {
                         log.debug(String.format("Discovered VM %s (%s) on cluster %s",
                                 vm.getName(), vm.getId(), clusterId));
+
+                        // Add VM to fact database
                         vms.add(vm);
                         if (runningAt != null) {
                             facts.add(new RunningVm(vm.getId()));
                         }
+
+                        // Compile VM statistics and add them to fact database
+
+                        // Typecast is needed; like for host statistics
+                        VMStatistics stats = (VMStatistics) vm.getStatistics();
+
+                        VmStats vmStats = new VmStats(vm.getId());
+                        for(Statistic stat : stats.list()){
+                            vmStats.loadValue(stat);
+                        }
+                        facts.add(vmStats);
+
+                        // Add additional VM info
+                        facts.add(VmInfo.createFromVm(vm, threadsAsCores));
                     }
                 }
 
