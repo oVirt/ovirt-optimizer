@@ -68,7 +68,7 @@ end
 //      and consider 65 MB as per guest overhead
 rule "notEnoughGuaranteedMemory"
     when
-        exists PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.MEMORY_FILTER.uuid)
         $step: Migration(valid == true || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id, $memory: memory - 256 - 65)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
@@ -88,7 +88,7 @@ end
 //      and consider 65 MB as per guest overhead
 rule "notEnoughMemory"
     when
-        exists PolicyUnitEnabled(uuid == "c9ddbb34-0e1d-4061-a8d7-b0893fa80932")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.MEMORY_FILTER.uuid)
         $step: Migration(valid == true || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id,
                     $memory: ((memory - 256 - 65) * 100 + (memory - 256 - 65) * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
@@ -108,7 +108,7 @@ end
 /* Compare the number of cores */
 rule "notEnoughCores"
     when
-        exists PolicyUnitEnabled(uuid == "6d636bf6-a35c-4f9d-b68d-0731f720cddc")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.CPU_FILTER.uuid)
         not(exists CountThreadsAsCores())
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
@@ -126,7 +126,7 @@ end
 
 rule "notEnoughThreads"
     when
-        exists PolicyUnitEnabled(uuid == "6d636bf6-a35c-4f9d-b68d-0731f720cddc")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.CPU_FILTER.uuid)
         exists CountThreadsAsCores()
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id,
@@ -185,7 +185,7 @@ end
 // TODO NetworkPolicyUnit
 rule "checkRequiredDisplayNetworks"
     when
-        exists PolicyUnitEnabled(uuid == "72163d1c-9468-4480-99d9-0888664eb143")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.NETWORK_FILTER.uuid)
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
         $vm: VM($vmId : id,
@@ -203,7 +203,7 @@ end
 // PinToHostPolicyUnit - only check migrations, ignore starts
 rule "pinToHostMigration"
     when
-        exists PolicyUnitEnabled(uuid == "12262ab6-9690-4bc3-a2b3-35573b172d54")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.PIN_TO_HOST_FILTER.uuid)
         $step: Migration(valid == true, start == false, $vm: vm, $destination: destination)
         VM(id == $vm.id,
            placementPolicy.affinity != "migratable")
@@ -215,7 +215,7 @@ end
 // PinToHostPolicyUnit - only check placement for start actions
 rule "pinToHostStart"
     when
-        exists PolicyUnitEnabled(uuid == "12262ab6-9690-4bc3-a2b3-35573b172d54")
+        exists PolicyUnitEnabled(uuid == PolicyUnit.PIN_TO_HOST_FILTER.uuid)
         $step: Migration(valid == true, start == true, $vm: vm, $destination: destination)
         $host: Host(id == $destination.id)
         VM(id == $vm.id,
@@ -298,8 +298,8 @@ end */
 // this is the memory analogy to OptimalForEvenDistribution unit
 rule "balancedMemory"
    when
-       (or PolicyUnitEnabled(uuid == "7db4ab05-81ab-42e8-868a-aee2df483edb", $factor : factor)
-           PolicyUnitEnabled(uuid == "38440000-8cf0-14bd-c43e-10b96e4ef00b", $factor : factor))
+       (or PolicyUnitEnabled(uuid == PolicyUnit.EVEN_DIST_WEIGHT.uuid, $factor : factor)
+           PolicyUnitEnabled(uuid == PolicyUnit.NONE_WEIGHT.uuid, $factor : factor))
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
        Host($id2 : id, $id1 != $id2)
@@ -326,7 +326,7 @@ end
 // it reduces the soft score by 1 when a non-empty host is encountered
 rule "consolidatedMemory"
    when
-       PolicyUnitEnabled(uuid == "736999d0-1023-46a4-9a75-1316ed50e15b", $factor : factor)
+       PolicyUnitEnabled(uuid == PolicyUnit.POWER_SAVING_WEIGHT.uuid, $factor : factor)
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
        exists (
@@ -341,7 +341,7 @@ end
 // OptimalForEvenGuestDistribution
 rule "balancedVmCount"
    when
-       PolicyUnitEnabled(uuid == "3ba8c988-f779-42c0-90ce-caa8243edee7", $factor: factor)
+       PolicyUnitEnabled(uuid == PolicyUnit.BALANCE_VM_COUNT.uuid, $factor: factor)
        Property(name == "MigrationThreshold", $migrationThreshold : value)
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)

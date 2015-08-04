@@ -7,7 +7,16 @@ public enum PolicyUnit {
     PIN_TO_HOST_FILTER("12262ab6-9690-4bc3-a2b3-35573b172d54"),
     MEMORY_FILTER("c9ddbb34-0e1d-4061-a8d7-b0893fa80932"),
     HOSTED_ENGINE_FILTER("e659c871-0bf1-4ccc-b748-f28f5d08dffd"),
-    HOSTED_ENGINE_WEIGHT("98e92667-6161-41fb-b3fa-34f820ccbc4b");
+    HOSTED_ENGINE_WEIGHT("98e92667-6161-41fb-b3fa-34f820ccbc4b"),
+    CPU_FILTER("6d636bf6-a35c-4f9d-b68d-0731f720cddc"),
+    NETWORK_FILTER("72163d1c-9468-4480-99d9-0888664eb143"),
+
+    // OptimalForEvenDistribution
+    EVEN_DIST_WEIGHT("7db4ab05-81ab-42e8-868a-aee2df483edb"),
+    NONE_WEIGHT("38440000-8cf0-14bd-c43e-10b96e4ef00b"),
+
+    // OptimalForPowerSaving
+    POWER_SAVING_WEIGHT("736999d0-1023-46a4-9a75-1316ed50e15b");
 
     final String uuid;
 
