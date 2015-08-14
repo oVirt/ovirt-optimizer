@@ -80,7 +80,7 @@ public class SituationTest {
         vm.getPlacementPolicy().setHost(dummyhost);
         vm.getPlacementPolicy().setAffinity("pinned");
 
-        VM vm2 = optimizer.createVm("VM-A", 10000000L);
+        VM vm2 = optimizer.createVm("VM-B", 10000000L);
         vm2.setHost(host);
 
         HardSoftScore result = optimizer
@@ -91,7 +91,7 @@ public class SituationTest {
                 .enablePolicyUnit(PolicyUnit.PIN_TO_HOST_FILTER)
                 .score();
 
-        assertNotEquals(0, result.getHardScore());
+        assertEquals(0, result.getHardScore());
     }
 
     /**
