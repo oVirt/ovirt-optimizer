@@ -10,6 +10,8 @@ public enum PolicyUnit {
     CPU_FILTER("6d636bf6-a35c-4f9d-b68d-0731f720cddc"),
     NETWORK_FILTER("72163d1c-9468-4480-99d9-0888664eb143"),
 
+    VM_AFFINITY_FILTER("84e6ddee-ab0d-42dd-82f0-c297779db566"),
+    VM_AFFINITY_WEIGHT("84e6ddee-ab0d-42dd-82f0-c297779db567"),
 
     EVEN_DIST_BALANCE("7db4ab05-81ab-42e8-868a-aee2df483ed2"),
     EVEN_DIST_WEIGHT("7db4ab05-81ab-42e8-868a-aee2df483edb"),

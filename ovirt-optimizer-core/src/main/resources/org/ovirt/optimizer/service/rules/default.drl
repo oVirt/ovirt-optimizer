@@ -17,6 +17,7 @@ import org.ovirt.optimizer.service.facts.PolicyProperty;
 import org.ovirt.optimizer.service.facts.VmStats;
 import org.ovirt.optimizer.service.facts.HostStats;
 import org.ovirt.optimizer.service.facts.HostInfo;
+import org.ovirt.optimizer.service.facts.VmAffinityGroup;
 import org.ovirt.optimizer.service.facts.VmInfo;
 
 global HardSoftScoreHolder scoreHolder;
@@ -409,4 +410,54 @@ rule "balancedVmCount"
        )
    then
        scoreHolder.addSoftConstraintMatch(kcontext, -1 * $factor * Math.abs($vmCount1.intValue() - $vmCount2.intValue()));
+end
+
+rule "vmAffinityEnforcingPositive"
+    when
+        exists PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_FILTER.uuid)
+        VmAffinityGroup(positive == true, enforcing == true, $vmIds : vmIds)
+        $step : Migration(valid == true || finalStep == true)
+        VM( $id1 : id, id memberOf $vmIds )
+        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+            $step.getAssignment($id1) != $step.getAssignment($id2))
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -10);
+end
+
+rule "vmAffinityEnforcingNegative"
+    when
+        exists PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_FILTER.uuid)
+        VmAffinityGroup(positive == false, enforcing == true, $vmIds : vmIds)
+        $step : Migration(valid == true || finalStep == true)
+        VM( $id1 : id, id memberOf $vmIds )
+        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+            $step.getAssignment($id1) == $step.getAssignment($id2))
+    then
+        scoreHolder.addHardConstraintMatch(kcontext, -10);
+end
+
+
+rule "vmAffinityNotEnforcingPositive"
+    when
+        PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_WEIGHT.uuid, $factor : factor)
+        VmAffinityGroup(positive == true, enforcing == false, $vmIds : vmIds)
+        $step : Migration(finalStep == true)
+        VM( $id1 : id, id memberOf $vmIds )
+        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+            $step.getAssignment($id1) != $step.getAssignment($id2))
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
+end
+
+
+rule "vmAffinityNotEnforcingNegative"
+    when
+        PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_WEIGHT.uuid, $factor : factor)
+        VmAffinityGroup(positive == false, enforcing == false, $vmIds : vmIds)
+        $step : Migration(finalStep == true)
+        VM( $id1 : id, id memberOf $vmIds )
+        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+            $step.getAssignment($id1) == $step.getAssignment($id2))
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
 end

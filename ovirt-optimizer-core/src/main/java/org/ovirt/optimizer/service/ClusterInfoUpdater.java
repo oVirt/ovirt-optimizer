@@ -2,6 +2,7 @@ package org.ovirt.optimizer.service;
 
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.decorators.Cluster;
+import org.ovirt.engine.sdk.decorators.ClusterAffinityGroup;
 import org.ovirt.engine.sdk.decorators.HostStatistics;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicy;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicyBalance;
@@ -20,6 +21,7 @@ import org.ovirt.optimizer.service.facts.HostInfo;
 import org.ovirt.optimizer.service.facts.HostStats;
 import org.ovirt.optimizer.service.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.service.facts.VmAffinityGroup;
 import org.ovirt.optimizer.service.facts.VmInfo;
 import org.ovirt.optimizer.service.facts.VmStats;
 import org.ovirt.optimizer.util.ConfigProvider;
@@ -77,6 +79,12 @@ public class ClusterInfoUpdater implements Runnable {
 
                 Cluster clusterInstance = engine.getClusters().getById(clusterId);
                 DataCenter dataCenter = clusterInstance.getDataCenter();
+
+                // Add affinity groups to fact database
+                for(ClusterAffinityGroup group : clusterInstance.getAffinityGroups().list()){
+                    VmAffinityGroup fact = VmAffinityGroup.create(group, group.getVMs().list());
+                    facts.add(fact);
+                }
 
                 boolean threadsAsCores = clusterInstance.getThreadsAsCores();
 
