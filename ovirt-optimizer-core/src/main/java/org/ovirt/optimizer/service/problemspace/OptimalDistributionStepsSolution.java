@@ -27,6 +27,9 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     Set<Object> fixedFacts;
     Set<VM> vms;
 
+    // Timestamp when the solution was returned from optaplanner
+    private long timestamp;
+
     @Override
     public HardSoftScore getScore() {
         return score;
@@ -132,5 +135,13 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
         for(Migration m: steps) {
             m.setStepsToFinish(--stepsToFinish);
         }
+    }
+
+    public long getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(long timestamp) {
+        this.timestamp = timestamp;
     }
 }

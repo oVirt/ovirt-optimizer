@@ -22,6 +22,7 @@ public class Result implements Serializable {
     int softScore;
     int hardScore;
     ResultStatus status = ResultStatus.UNKNOWN;
+    long age;
 
     public Result() {}
     public Result(String cluster) {
@@ -131,5 +132,13 @@ public class Result implements Serializable {
 
     public void setStatus(ResultStatus status) {
         this.status = status;
+    }
+
+    public long getAge() {
+        return age;
+    }
+
+    public void setAge(long age) {
+        this.age = age;
     }
 }

@@ -268,6 +268,9 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
                 migrations.add(migration);
             }
             r.setMigrations(migrations);
+
+            long time = System.currentTimeMillis();
+            r.setAge(time - best.getTimestamp());
         }
 
         return r;

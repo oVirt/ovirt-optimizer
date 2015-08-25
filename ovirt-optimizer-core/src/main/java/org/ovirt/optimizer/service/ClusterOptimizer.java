@@ -198,7 +198,10 @@ public class ClusterOptimizer implements Runnable {
                 }
 
                 synchronized (ClusterOptimizer.this) {
+                    // Get new solution and set the timestamp to current time
                     bestSolution = (OptimalDistributionStepsSolution)bestSolutionChangedEvent.getNewBestSolution();
+                    bestSolution.setTimestamp(System.currentTimeMillis());
+
                     log.info(String.format("New solution for %s available (score %s)",
                             clusterId, bestSolution.getScore().toString()));
 
@@ -211,6 +214,7 @@ public class ClusterOptimizer implements Runnable {
 
         // Create new solution space
         bestSolution = new OptimalDistributionStepsSolution();
+
         bestSolution.setHosts(new HashSet<Host>());
         bestSolution.setVms(new HashSet<VM>());
         bestSolution.setOtherFacts(new HashSet<Object>());
@@ -223,6 +227,8 @@ public class ClusterOptimizer implements Runnable {
         }
         bestSolution.setSteps(migrationSteps);
         bestSolution.establishStepOrdering();
+
+        bestSolution.setTimestamp(System.currentTimeMillis());
 
         ClusterSituation previous = bestSolution;
         for (Migration m: migrationSteps) {
