@@ -130,6 +130,11 @@
 
     <h2>Solution status</h2>
     <p><i class="fa status-icon {{ status }}"></i> Status: {{ valid }}</p>
+
+    <p ng-show="resultTimestamp != null && !isSolutionOld()"><i class="fa status-icon warning"></i> Solution is older than {{ageThreshold}} min.</p>
+    <p ng-show="resultTimestamp != null &&  isSolutionOld()"><i class="fa fa-info-circle"></i> Solution is up to date.</p>
+    <p ng-show="resultTimestamp == null">&nbsp;</p>
+
     <p ng-show="!frozen"><i class="fa fa-refresh fa-spin"></i> Solution is being refreshed every 30 seconds.</p>
     <p ng-show="frozen"><i class="fa fa-stop"></i> Solution is frozen.</p>
 
@@ -260,6 +265,8 @@
         $scope.hosts = {};
         $scope.vms = {};
         $scope.gb = 1024 * 1024 * 1024;
+        $scope.resultTimestamp = null;
+        $scope.ageThreshold = cfg["ageThresholdMin"];
 
         $scope.migrate = function(vm, host, event) {
             console.log("Initiating migration of vm "+vm+" to host "+host);
@@ -393,6 +400,9 @@
                     $scope.status = "not-doable";
                 }
 
+                $scope.resultTimestamp = new Date();
+                $scope.resultTimestamp.setTime( $scope.resultTimestamp.getTime() - $scope.result.age );
+
                 $scope.recomputeResources();
             }).error(function (data, status) {
                 $scope.valid = "Could not connect to the optimizer service [status code: "+status+"]";
@@ -479,6 +489,10 @@
                 $scope.status = "warning";
                 $timeout($scope.refreshVmInfo, 15000);
             });
+        };
+
+        $scope.isSolutionOld = function(){
+            return ( (new Date()) - $scope.resultTimestamp) / 60000 > $scope.ageThreshold;
         };
 
         $scope.refresh();
