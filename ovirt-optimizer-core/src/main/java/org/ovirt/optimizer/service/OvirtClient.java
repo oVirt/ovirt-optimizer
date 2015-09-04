@@ -52,7 +52,7 @@ public class OvirtClient {
         this.username = config.getProperty(ConfigProvider.SDK_USERNAME);
         this.password = config.getProperty(ConfigProvider.SDK_PASSWORD);
         this.caStore = config.getProperty(ConfigProvider.SDK_CA_STORE);
-        this.requestTimeout = Integer.valueOf(config.getProperty(ConfigProvider.SDK_REQUEST_TIMEOUT)) * 1000;
+        this.requestTimeout = Integer.parseInt(config.getProperty(ConfigProvider.SDK_REQUEST_TIMEOUT)) * 1000;
         this.api = null;
     }
 

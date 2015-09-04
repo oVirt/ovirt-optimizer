@@ -72,7 +72,7 @@ public class ResultResource {
     @Path("/{cluster}/cancel")
     @Produces("application/json")
     @Consumes("application/json")
-    public Response CancelVm(RunningVm request,
+    public Response cancelVm(RunningVm request,
                              @PathParam("cluster") String cluster) {
 
         optimizer.cancelVmStart(cluster, request.getId());

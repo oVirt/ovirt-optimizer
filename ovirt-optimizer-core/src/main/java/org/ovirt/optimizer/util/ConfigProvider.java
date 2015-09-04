@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.util;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 
 import java.io.File;
@@ -52,11 +53,23 @@ public class ConfigProvider {
         config.setProperty(SOLVER_CUSTOM_RULE_DIR, "/etc/ovirt-optimizer/rules.d");
     }
 
+    @SuppressFBWarnings("DM_DEFAULT_ENCODING")
     public ConfigProvider load() {
+        FileReader reader = null;
+
         try {
-            config.load(new FileReader(configFile));
+            reader = new FileReader(configFile);
+            config.load(reader);
         } catch (IOException ex) {
             log.error("Connection to oVirt REST server failed", ex);
+        } finally {
+            try {
+                if (reader != null) {
+                    reader.close();
+                }
+            } catch (IOException ex) {
+                log.error("The config file could not be closed", ex);
+            }
         }
 
         return this;

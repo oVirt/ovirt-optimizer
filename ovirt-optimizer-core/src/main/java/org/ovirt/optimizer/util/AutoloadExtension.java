@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.util;
 
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
 
 import javax.enterprise.context.ApplicationScoped;
@@ -34,6 +35,7 @@ public class AutoloadExtension implements Extension {
         }
     }
 
+    @SuppressFBWarnings("RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT")
     public void load(@Observes AfterDeploymentValidation event, BeanManager beanManager) {
         for (Bean<?> bean : autoloadBeanList) {
             if (loaded.contains(bean)) {

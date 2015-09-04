@@ -67,7 +67,7 @@ public class ClusterInfoUpdater implements Runnable {
     public void run() {
         log.info(String.format("Updater thread for %s starting", clusterId));
         while (running) {
-            int refresh = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_DATA_REFRESH));
+            int refresh = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_DATA_REFRESH));
 
             Set<Host> hosts = new HashSet<>();
             Set<String> hostIds = new HashSet<>();

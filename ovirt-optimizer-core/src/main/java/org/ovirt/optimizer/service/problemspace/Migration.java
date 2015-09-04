@@ -101,7 +101,7 @@ public class Migration implements ClusterSituation {
 		   if the VM was already running on the destination host
 		 */
         String oldHost = vmToHostAssignments.get(vm.getId());
-        valid = (oldHost == null) ? destination != null : !oldHost.equals(destination.getId());
+        valid = oldHost == null || !oldHost.equals(destination.getId());
 
         vmToHostAssignments.put(vm.getId(), destination.getId());
     }

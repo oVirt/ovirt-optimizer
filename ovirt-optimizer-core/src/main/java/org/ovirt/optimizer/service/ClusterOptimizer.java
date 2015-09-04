@@ -162,7 +162,7 @@ public class ClusterOptimizer implements Runnable {
     }
 
     public static ClusterOptimizer optimizeCluster(OvirtClient client, ConfigProvider configProvider, final String clusterId, int maxSteps, Finished finishedCallback) {
-        long timeout = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT)) * 1000;
+        long timeout = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT)) * 1000;
         ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout, finishedCallback, configProvider.customRuleFiles());
         ClusterInfoUpdater updater = new ClusterInfoUpdater(client, configProvider, clusterId);
         optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));

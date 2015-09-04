@@ -62,7 +62,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public void create() {
         log.info("oVirt optimizer service starting");
         threads = new HashSet<>();
-        int refresh = Integer.valueOf(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
+        int refresh = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
         discoveryTimer = scheduler.createTimer(refresh, DiscoveryTimeout.class);
     }
 
@@ -94,7 +94,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         }
 
         Properties config = new ConfigProvider().load().getConfig();
-        final int maxSteps = Integer.valueOf(config.getProperty(ConfigProvider.SOLVER_STEPS));
+        final int maxSteps = Integer.parseInt(config.getProperty(ConfigProvider.SOLVER_STEPS));
 
         for (String clusterId: availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
