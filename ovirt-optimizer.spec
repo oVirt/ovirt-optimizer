@@ -1,3 +1,8 @@
+# The version macro to be redefined by Jenkins build when needed
+%define project_version 0.9
+%{!?_version: %define _version %{project_version}}
+%{!?_release: %define _release 1}
+
 %global engine_etc /etc/ovirt-engine
 %global engine_data %{_datadir}/ovirt-engine
 %global jetty_deployments %{_datadir}/jetty/webapps
@@ -45,11 +50,6 @@
 %global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
 %endif
 
-# The version macro to be redefined by Jenkins build when needed
-%define project_version 0.9
-%{!?_version: %define _version %{project_version}}
-%{!?_release: %define _release 1}
-
 Name:		ovirt-optimizer
 Version:	%{_version}
 Release:	%{_release}%{?dist}
@@ -63,9 +63,17 @@ BuildArch:	noarch
 
 BuildRequires:	java-devel
 BuildRequires:	jpackage-utils
+
+# Enable SCL maven when available, but only on EL6
+%if 0%{?scl:1} && 0%{?rhel} && 0%{?rhel} <= 6
+BuildRequires:  maven30
+BuildRequires:  maven30-maven
+BuildRequires:  rh-java-common-maven-local
+%else
+BuildRequires:  maven
 BuildRequires:	maven-local
-BuildRequires:  maven-war-plugin
-BuildRequires:  maven-jar-plugin
+%endif
+
 BuildRequires:	unzip
 BuildRequires:  symlinks
 
@@ -170,7 +178,9 @@ for the project to work. The goal is to drop this subpackage once the dependenci
 %setup -c -q
 
 %build
+%{?scl:scl enable maven30 "}
 mvn %{?with_extra_maven_opts} clean install
+%{?scl:"}
 
 %install
 ##

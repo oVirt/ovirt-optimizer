@@ -109,29 +109,30 @@ RELEASE
 How to prepare a release:
 
 1. update the version and changelog in the spec file:
-
-1.1. change project_version and changelog in the spec
-    - run
-      mvn versions:set -DnewVersion=<new version>
+   sh bump-version.sh <new version>
+   edit the spec file and fill in the changelog entry
 
 2. run:
    git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz
+   or
+   sh make-srpm.sh
 
-BUILDING RPM
 
-This shell script can be used to prepare a properly versioned RPM
+BUILDING RPMs LOCALLY
 
-sed -i -e 's/mvn --offline /mvn /g' ovirt-optimizer.spec
+rpmbuild --define "_version $VERSION" --define "_release ${VERSION[1]-1}" --nodeps --rebuild ovirt-optimizer-<version>.srpm
 
-# downloads and installs the necessary jars
-mvn help:evaluate -Dexpression=project.version 
+BUILDING RPMs IN COPR
 
-# Prepare the version string (with support for SNAPSHOT versioning)
-# $VERSION contains the version and ${VERSION[1]} the release if it is needed
-VERSION=$(mvn help:evaluate -Dexpression=project.version 2>/dev/null | grep -v "^\[")
-VERSION=${VERSION/-SNAPSHOT/-0.$(git rev-list HEAD --count).$(date +%04Y%02m%02d%02H%02M)}
-IFS='-' read -ra VERSION <<< "$VERSION"
+The following packages have to be always present for EL6 platform:
 
-git archive --format=tar HEAD | gzip -9 >$HOME/rpmbuild/SOURCES/ovirt-optimizer-$VERSION.tar.gz
-rpmbuild --define "_version $VERSION" --define "_release ${VERSION[1]-1}" -ba --nodeps ovirt-optimizer.spec
+scl-utils-build maven30-build
+
+The following repositories have to be explicitly added to the project:
+
+copr://rhscl/maven30-el6
+copr://rhscl/rh-java-common
+
+Also the internet access has to be enabled for the build so it can retrieve
+all maven dependencies.
 
