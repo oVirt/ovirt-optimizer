@@ -7,6 +7,9 @@
 
 MAVEN_SETTINGS="/etc/maven/settings.xml"
 
+# Set the location of the JDK that will be used for compilation:
+export JAVA_HOME="${JAVA_HOME:=/usr/lib/jvm/java-1.8.0}"
+
 # Use ovirt mirror if able, fall back to central maven
 cat >"$MAVEN_SETTINGS" <<EOS
 <?xml version="1.0"?>
