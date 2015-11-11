@@ -16,7 +16,7 @@ elif [ -r /usr/share/wildfly ]; then
     JBOSS_MGMT_PORT=9990
 elif [ -r /usr/share/jbossas ]; then
     JBOSS_HOME="/usr/share/jbossas"
-    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/jboss7"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/eap6"
     JBOSS_MGMT_PORT=9999
 elif [ -r /usr/share/jboss-as ]; then
     JBOSS_HOME="/usr/share/jboss-as"
