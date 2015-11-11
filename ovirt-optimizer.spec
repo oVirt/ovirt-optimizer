@@ -149,7 +149,11 @@ Requires:      resteasy
 Requires:      jackson
 Requires:      jboss-annotations-1.1-api
 Requires:      jboss-transaction-1.1-api
+%if 0%{?fedora} >= 23
+Requires:      tomcat-jsp-2.3-api
+%else
 Requires:      tomcat-jsp-2.2-api
+%endif
 Requires:      apache-commons-math >= 3
 Requires:      ecj
 
