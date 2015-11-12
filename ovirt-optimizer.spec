@@ -2,6 +2,8 @@
 %define project_version 0.9
 %{!?_version: %define _version %{project_version}}
 %{!?_release: %define _release 1}
+%define mvn_sed sed -e 's/mvn(\\([^)]*\\))\\( [>=<]\\{1,2\\} [^ ]\\{1,\\}\\)\\{0,1\\}/\\1/g'
+%{!?_licensedir:%global license %doc}
 
 %global engine_etc /etc/ovirt-engine
 %global engine_data %{_datadir}/ovirt-engine
@@ -64,39 +66,40 @@ BuildArch:	noarch
 BuildRequires:	java-devel
 BuildRequires:	jpackage-utils
 
-# Enable SCL maven when available, but only on EL6
-%if 0%{?scl:1} && 0%{?rhel} && 0%{?rhel} <= 6
-BuildRequires:  maven30
-BuildRequires:  maven30-maven
-BuildRequires:  rh-java-common-maven-local
-%else
 BuildRequires:  maven
 BuildRequires:	maven-local
-%endif
 
 BuildRequires:	unzip
 BuildRequires:  symlinks
 
 Requires:	java >= 1:1.7.0
 Requires:	jpackage-utils
+Requires:       xmvn
+
+# Needed for xmvn, probably a packaging bug
+Requires:       maven-local
 
 Requires:       curl
 Requires:       unzip
 
 %if 0%{?fedora}
-Requires:       antlr3
-Requires:       quartz
+Requires:       mvn(org.antlr:antlr) >= 3
+Requires:       mvn(org.antlr:antlr-runtime) >= 3
+Requires:       mvn(org.quartz-scheduler:quartz) >= 2.2
+Requires:       mvn(commons-math3:commons-math3)
 %endif
 
-Requires:       xpp3
+Requires:       mvn(xpp3:xpp3)
+Requires:       mvn(org.apache.httpcomponents:httpclient)
+Requires:       mvn(org.apache.httpcomponents:httpcore)
 
 %if 0%{?fedora} || 0%{?rhel} >= 7
-Requires:       protobuf-java >= 2.5
-Requires:       guava >= 13
+Requires:       mvn(com.google.protobuf:protobuf-java) >= 2.5
+Requires:       mvn(com.google.guava:guava) >= 13
 %endif
 
-Requires:       slf4j
-Requires:       ovirt-engine-sdk-java >= 3.5.2.0
+Requires:       mvn(org.slf4j:slf4j-api)
+Requires:       mvn(org.ovirt.engine.sdk:ovirt-engine-sdk-java) >= 3.5.2.0
 
 %description
 %{name} service collects data from the oVirt engine and proposes
@@ -104,7 +107,7 @@ Vm to host assignments to utilize cluster resources better.
 
 %package ui
 Summary:        UI for displaying results in oVirt webadmin
-Requires:	    ovirt-engine-webadmin-portal >= 3.5
+Requires:       ovirt-engine-webadmin-portal >= 3.5
 
 %description ui
 This subpackage adds an UI plugin to the oVirt webadmin portal.
@@ -119,6 +122,10 @@ Provides:      %{name}-wildfly = %{version}
 Requires:      %{name} = %{version}
 Requires:      %{name}-dependencies = %{version}
 
+Requires(post): %{name} = %{version}
+Requires(post): %{name}-dependencies = %{version}
+Requires(post): findutils
+
 %if %{?with_systemd}
 Requires(post): systemd
 Requires(preun): systemd
@@ -130,7 +137,8 @@ BuildRequires: systemd
 Requires:      sudo
 %endif
 
-Requires:      log4j
+Requires:      mvn(log4j:log4j)
+Requires:      mvn(org.slf4j:slf4j-log4j12)
 
 %if 0%{?fedora} && 0%{?fedora} >= 20
 Requires:	   ovirt-engine-wildfly >= 8.2
@@ -151,19 +159,32 @@ application server.
 Summary:       Integration of the optimization service to Jetty 9.
 Requires:      %{name} = %{version}
 Requires:      %{name}-dependencies = %{version}
+
+Requires(post): findutils
+Requires(post): %{name} = %{version}
+Requires(post): %{name}-dependencies = %{version}
+
 Requires:      jetty >= 9
-Requires:      cdi-api
-Requires:      resteasy
-Requires:      jackson
-Requires:      jboss-annotations-1.1-api
-Requires:      jboss-transaction-1.1-api
-%if 0%{?fedora} >= 23
-Requires:      tomcat-jsp-2.3-api
-%else
-Requires:      tomcat-jsp-2.2-api
-%endif
-Requires:      apache-commons-math >= 3
-Requires:      ecj
+
+Requires:      mvn(log4j:log4j)
+Requires:      mvn(org.slf4j:slf4j-log4j12)
+
+Requires:      mvn(org.jboss.spec.javax.annotation:jboss-annotations-api_1.1_spec)
+Requires:      mvn(org.jboss.spec.javax.transaction:jboss-transaction-api_1.1_spec)
+Requires:      mvn(org.apache.tomcat:tomcat-jsp-api)
+Requires:      mvn(org.jboss.resteasy:jaxrs-api)
+Requires:      mvn(org.jboss.resteasy:resteasy-jackson-provider)
+Requires:      mvn(org.jboss.resteasy:resteasy-cdi)
+Requires:      mvn(org.codehaus.jackson:jackson-core-asl)
+Requires:      mvn(org.codehaus.jackson:jackson-jaxrs)
+Requires:      mvn(org.codehaus.jackson:jackson-mapper-asl)
+Requires:      mvn(org.codehaus.jackson:jackson-xc)
+Requires:      mvn(javax.enterprise:cdi-api)
+Requires:      mvn(org.scannotation:scannotation)
+Requires:      mvn(c3p0:c3p0)
+Requires:      mvn(javassist:javassist)
+Requires:      mvn(org.eclipse.jdt.core.compiler:ecj)
+Requires:      mvn(net.jcip:jcip-annotations)
 
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
@@ -173,6 +194,19 @@ server.
 %package dependencies
 Summary:       Libraries not currently provided by the system, but necessary for the project.
 Requires:      %{name} = %{version}
+
+%if 0%{?fedora}
+Requires:      mvn(org.antlr:antlr)
+Requires:      mvn(org.antlr:antlr-runtime)
+Requires:      mvn(commons-io:commons-io)
+Requires:      mvn(commons-lang:commons-lang)
+Requires:      mvn(commons-math3:commons-math3) >= 3
+%endif
+
+Requires:      mvn(commons-beanutils:commons-beanutils)
+Requires:      mvn(commons-codec:commons-codec)
+Requires:      mvn(commons-logging:commons-logging)
+
 
 %description dependencies
 This subpackage bundles libraries that are not provided in the form of RPMs, but are necessary
@@ -240,12 +274,12 @@ mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
-%{_javadir}/slf4j/slf4j-api.jar
-%{_javadir}/slf4j/slf4j-log4j12.jar
-%{_javadir}/log4j.jar
-%{_javadir}/commons-beanutils.jar
-%{_javadir}/commons-codec.jar
-%{_javadir}/commons-logging.jar
+%if 0%{?rhel}
+%{_optaplanner}/antlr-runtime-3.5.jar
+%{_optaplanner}/commons-io-2.1.jar
+%{_optaplanner}/commons-lang-2.6.jar
+%{_optaplanner}/commons-math3-3.2.jar
+%endif
 %{_optaplanner}/drools-compiler-6.2.0.Final.jar
 %{_optaplanner}/drools-core-6.2.0.Final.jar
 %{_optaplanner}/kie-api-6.2.0.Final.jar
@@ -253,41 +287,13 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_optaplanner}/mvel2-2.2.4.Final.jar
 %{_optaplanner}/optaplanner-core-6.2.0.Final.jar
 %{_optaplanner}/xmlpull-1.1.3.1.jar
-%{_optaplanner}/xstream-1.4.7.jar
-%if 0%{?fedora} || 0%{?rhel} >= 7
-%{_javadir}/guava.jar
-%{_javadir}/protobuf.jar
-%endif
-%if 0%{?fedora}
-%{_javadir}/antlr3.jar
-%{_javadir}/antlr3-runtime.jar
-%{_javadir}/commons-io.jar
-%{_javadir}/commons-lang.jar
-%{_javadir}/commons-math3.jar
-%{_javadir}/quartz.jar
-%endif
-%if 0%{?rhel}
-%{_optaplanner}/antlr-runtime-3.5.jar
-%{_optaplanner}/commons-io-2.1.jar
-%{_optaplanner}/commons-lang-2.6.jar
-%{_optaplanner}/commons-math3-3.2.jar
-%endif
-%if 0%{?rhel} && 0%{?rhel} < 7
-%{_optaplanner}/guava-13.0.1.jar
-%{_optaplanner}/protobuf-java-2.5.0.jar
-%endif
-%{_javadir}/httpcomponents/httpcore.jar
-%{_javadir}/httpcomponents/httpclient.jar
-%{_javadir}/ovirt-engine-sdk-java/ovirt-engine-sdk-java.jar
-%{_javadir}/xpp3.jar"
+%{_optaplanner}/xstream-1.4.7.jar"
 
 %if 0%{?rhel}
 JBOSS_BUNDLE="target/lib/quartz-*"
 %else
 JBOSS_BUNDLE=""
 %endif
-
-
 
 %if 0%{?with_jboss}
 
@@ -327,33 +333,10 @@ pushd ovirt-optimizer-jetty
 mkdir target/lib
 mv target/%{name}-jetty/WEB-INF/lib/* target/lib
 
-JETTY_SYMLINK="%{_javadir}/resteasy/resteasy-cdi.jar
-%{_javadir}/resteasy/resteasy-jackson-provider.jar
-%{_javadir}/resteasy/resteasy-jaxrs.jar
-%{_javadir}/resteasy/jaxrs-api.jar
-%{_javadir}/jackson/jackson-core-asl.jar
-%{_javadir}/jackson/jackson-jaxrs.jar
-%{_javadir}/jackson/jackson-mapper-asl.jar
-%{_javadir}/jackson/jackson-xc.jar
-%if 0%{?rhel} || 0%{?fedora} < 20
-%{_javadir}/cdi-api.jar
-%endif
-%if 0%{?fedora} && 0%{?fedora}>=20
-%{_javadir}/cdi-api/cdi-api.jar
-%endif
-%{_javadir}/c3p0.jar
-%{_javadir}/javassist.jar
-%{_javadir}/scannotation.jar
-%{_javadir}/elspec.jar
-%{_javadir}/ecj.jar
-%{_jettydir}/jetty-jmx.jar
+JETTY_SYMLINK="%{_jettydir}/jetty-jmx.jar
 %{_jettydir}/jetty-server.jar
 %{_jettydir}/jetty-servlet.jar
-%{_jettydir}/jetty-util.jar
-%{_javadir}/jboss-annotations-1.1-api.jar
-%{_javadir}/jboss-interceptors-1.1-api.jar
-%{_javadir}/jsp.jar
-%{_javadir}/jcip-annotations.jar"
+%{_jettydir}/jetty-util.jar"
 
 JETTY_BUNDLE="target/lib/weld-*
 target/lib/activation-1.1*
@@ -410,7 +393,8 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %files
 %defattr(644, root, root, 755)
-%doc README COPYING
+%doc README
+%license COPYING
 %attr(755, root, root) /usr/bin/ovirt-optimizer-setup
 %dir %{_javadir}/%{name}
 %{_javadir}/%{name}/*.jar
@@ -460,11 +444,44 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %post dependencies
 /usr/bin/ovirt-optimizer-setup || echo "Optaplanner 6.2.0 could not be installed. Please see the README file for %{name}-%{version} and install it manually"
 
+
+%if %{?with_jetty}
+%post jetty
+OPTIMIZER_MVN=$(rpm -qR %{name} | grep '^mvn(')
+
+echo ${OPTIMIZER_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+
+JETTY_MVN=$(rpm -qR %{name}-jetty | grep '^mvn(')
+
+echo ${JETTY_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+
+DEPS_MVN=$(rpm -qR %{name}-dependencies | grep '^mvn(')
+
+echo ${DEPS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
+%endif
+
+%if %{?with_jboss}
+%post jboss
+OPTIMIZER_MVN=$(rpm -qR %{name} | grep '^mvn(')
+
+echo ${OPTIMIZER_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jboss.war/WEB-INF/lib
+
+DEPS_MVN=$(rpm -qR %{name}-dependencies | grep '^mvn(')
+
+echo ${DEPS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jboss.war/WEB-INF/lib
+
+JBOSS_MVN=$(rpm -qR %{name}-jboss | grep '^mvn(')
+
+echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/jboss.war/WEB-INF/lib
+
+%if %{?with_systemd}
+# Systemd scripts
+%systemd_post ovirt-optimizer-jboss.service
+%endif
+%endif
+
 # Systemd scripts
 %if %{?with_systemd} && %{?with_jboss}
-%post jboss
-%systemd_post ovirt-optimizer-jboss.service
-
 %preun jboss
 %systemd_preun ovirt-optimizer-jboss.service
 
