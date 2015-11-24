@@ -225,6 +225,10 @@ mvn %{?with_extra_maven_opts} clean install
 ## Core
 ##
 
+# Install config file
+install -dm 755 %{buildroot}/etc/%{name}
+install dist/etc/*.properties %{buildroot}/etc/%{name}
+
 # Copy the setup script to the proper place
 install -dm 755 %{buildroot}/usr/bin
 mv dist/bin/ovirt-optimizer-setup %{buildroot}/usr/bin/
@@ -300,6 +304,10 @@ JBOSS_BUNDLE=""
 # Install the exploded Jboss war to javadir
 cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss.war
 
+# Move config file to etc and symlink it to the right place
+mv %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/log4j.properties %{buildroot}/etc/%{name}/logging-jboss.properties
+ln -sf /etc/%{name}/logging-jboss.properties %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/log4j.properties
+
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib @"
 
@@ -349,6 +357,10 @@ target/lib/jsr250-*"
 install -dm 755 %{buildroot}%{_javadir}/%{name}/jetty
 cp -ar target/%{name}-jetty %{buildroot}%{_javadir}/%{name}/jetty/%{name}
 
+# Move config file to etc and symlink it to the right place
+mv %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/log4j.properties %{buildroot}/etc/%{name}/logging-jetty.properties
+ln -sf /etc/%{name}/logging-jetty.properties %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/log4j.properties
+
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
 echo "$JETTY_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
@@ -387,9 +399,6 @@ install dist/ovirt-optimizer-uiplugin/*.json %{buildroot}%{engine_data}/ui-plugi
 install dist/ovirt-optimizer-uiplugin/ovirt-optimizer-resources/* %{buildroot}%{engine_data}/ui-plugins/ovirt-optimizer-resources
 install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 
-# Install config file
-install -dm 755 %{buildroot}/etc/%{name}
-install dist/etc/*.properties %{buildroot}/etc/%{name}
 
 %files
 %defattr(644, root, root, 755)
@@ -403,6 +412,7 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %if 0%{?with_jetty}
 %files jetty
 %defattr(644, root, root, 755)
+%config(noreplace) /etc/%{name}/logging-jetty.properties
 %dir %{_javadir}/%{name}/jetty/%{name}
 %{_javadir}/%{name}/jetty/%{name}/*
 %{jetty_deployments}/*
@@ -411,6 +421,7 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %if 0%{?with_jboss}
 %files jboss
 %defattr(644, root, root, 755)
+%config(noreplace) /etc/%{name}/logging-jboss.properties
 %dir %{_javadir}/%{name}/jboss.war
 %{_javadir}/%{name}/jboss.war/*
 %dir %{_javadir}/%{name}/jboss-conf
