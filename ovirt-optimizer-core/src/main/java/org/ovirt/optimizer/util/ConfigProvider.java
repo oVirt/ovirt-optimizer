@@ -27,6 +27,7 @@ public class ConfigProvider {
     public static final String SOLVER_CLUSTER_REFRESH = "org.ovirt.optimizer.solver.cluster.refresh";
     public static final String SOLVER_CUSTOM_RULE_DIR = "org.ovirt.optimizer.solver.custom.rules.d";
 
+    public static final String DEBUG_ENDPOINT_ENABLED = "org.ovirt.optimizer.debug";
 
     private String configFile;
     private Properties config;
@@ -51,6 +52,7 @@ public class ConfigProvider {
         config.setProperty(SOLVER_DATA_REFRESH, "60");
         config.setProperty(SOLVER_CLUSTER_REFRESH, "300");
         config.setProperty(SOLVER_CUSTOM_RULE_DIR, "/etc/ovirt-optimizer/rules.d");
+        config.setProperty(DEBUG_ENDPOINT_ENABLED, "false");
     }
 
     @SuppressFBWarnings("DM_DEFAULT_ENCODING")

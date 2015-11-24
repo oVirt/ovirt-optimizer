@@ -3,6 +3,7 @@ package org.ovirt.optimizer.service;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.common.DebugSnapshot;
 import org.ovirt.optimizer.common.Result;
 import org.ovirt.optimizer.common.ScoreResult;
 import org.ovirt.optimizer.service.facts.RunningVm;
@@ -230,49 +231,81 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             r = Result.createEmpty(cluster);
         }
         else {
-            OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
-
-            r = new Result(cluster);
-            r.setStatus(Result.ResultStatus.OK);
-            r.setHardScore(best.getScore().getHardScore());
-            r.setSoftScore(best.getScore().getSoftScore());
-
-            r.setHosts(new HashSet<String>());
-            for (Host h: best.getHosts()) {
-                r.getHosts().add(h.getId());
-            }
-
-            r.setVms(new HashSet<String>());
-            for (VM vm: best.getVms()) {
-                r.getVms().add(vm.getId());
-            }
-
-            r.setRequestedVms(new HashSet<String>());
-            for (Object fact: best.getFixedFacts()) {
-                if (fact instanceof RunningVm) {
-                    r.getRequestedVms().add(((RunningVm)fact).getId());
-                }
-            }
-
-            r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());
-            r.setVmToHost(best.getFinalSituation().getVmToHostAssignments());
-            r.setCurrentVmToHost(best.getVmToHostAssignments());
-
-            List<Map<String, String>> migrations = new ArrayList<>();
-            for (Migration step: best.getSteps()) {
-                if (!step.isValid()) {
-                    continue;
-                }
-                Map<String, String> migration = new HashMap<>();
-                migration.put(step.getVm().getId(), step.getDestination().getId());
-                migrations.add(migration);
-            }
-            r.setMigrations(migrations);
-
-            long time = System.currentTimeMillis();
-            r.setAge(time - best.getTimestamp());
+            r = getCurrentResult(clusterOptimizer);
         }
 
         return r;
+    }
+
+    private Result getCurrentResult(ClusterOptimizer clusterOptimizer) {
+        OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
+
+        Result r = new Result(clusterOptimizer.getClusterId());
+        r.setStatus(Result.ResultStatus.OK);
+        r.setHardScore(best.getScore().getHardScore());
+        r.setSoftScore(best.getScore().getSoftScore());
+
+        r.setHosts(new HashSet<String>());
+        for (Host h: best.getHosts()) {
+            r.getHosts().add(h.getId());
+        }
+
+        r.setVms(new HashSet<String>());
+        for (VM vm: best.getVms()) {
+            r.getVms().add(vm.getId());
+        }
+
+        r.setRequestedVms(new HashSet<String>());
+        for (Object fact: best.getFixedFacts()) {
+            if (fact instanceof RunningVm) {
+                r.getRequestedVms().add(((RunningVm)fact).getId());
+            }
+        }
+
+        r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());
+        r.setVmToHost(best.getFinalSituation().getVmToHostAssignments());
+        r.setCurrentVmToHost(best.getVmToHostAssignments());
+
+        List<Map<String, String>> migrations = new ArrayList<>();
+        for (Migration step: best.getSteps()) {
+            if (!step.isValid()) {
+                continue;
+            }
+            Map<String, String> migration = new HashMap<>();
+            migration.put(step.getVm().getId(), step.getDestination().getId());
+            migrations.add(migration);
+        }
+        r.setMigrations(migrations);
+
+        long time = System.currentTimeMillis();
+        r.setAge(time - best.getTimestamp());
+        return r;
+    }
+
+    @Override
+    public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
+        HardSoftScore score = ClusterOptimizer.computeScore(situation, result.getMigrations(), configProvider.customRuleFiles());
+
+        ScoreResult scoreResult = new ScoreResult();
+        scoreResult.setHardScore(score.getHardScore());
+        scoreResult.setSoftScore(score.getSoftScore());
+        return scoreResult;
+    }
+
+    @Override
+    public Map<String, DebugSnapshot> getDebugSnapshot() {
+        Map<String, DebugSnapshot> snaps = new HashMap<>();
+
+        synchronized (clusterOptimizers) {
+            for (ClusterOptimizer optimizer: clusterOptimizers.values()) {
+                DebugSnapshot snap = new DebugSnapshot();
+                snap.setCluster(optimizer.getClusterId());
+                snap.setState(optimizer.getBestSolution());
+                snap.setResult(getCurrentResult(optimizer));
+                snaps.put(optimizer.getClusterId(), snap);
+            }
+        }
+
+        return snaps;
     }
 }

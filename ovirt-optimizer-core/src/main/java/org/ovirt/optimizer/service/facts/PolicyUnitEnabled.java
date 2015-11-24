@@ -1,8 +1,17 @@
 package org.ovirt.optimizer.service.facts;
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
+
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class PolicyUnitEnabled {
     final String uuid;
     final int factor;
+
+    protected PolicyUnitEnabled() {
+        this(null, 0);
+    }
 
     public PolicyUnitEnabled(String uuid, int factor) {
         this.uuid = uuid;

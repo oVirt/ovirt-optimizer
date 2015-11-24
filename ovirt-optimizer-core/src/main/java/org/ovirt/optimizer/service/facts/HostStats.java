@@ -1,8 +1,12 @@
 package org.ovirt.optimizer.service.facts;
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.ovirt.engine.sdk.entities.Statistic;
 import java.math.BigDecimal;
 
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class HostStats {
     private static final String MEMORY_TOTAL = "memory.total";
     private static final String MEMORY_USED = "memory.used";
@@ -38,6 +42,9 @@ public class HostStats {
     private Float cpuCurrentIdle;
     private Float cpuCurrentAvg;
     private Long bootTime;
+
+    protected HostStats() {
+    }
 
     public HostStats(String id) {
         this.id = id;

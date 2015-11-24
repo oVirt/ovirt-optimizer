@@ -18,16 +18,21 @@
         </resource-env-ref-type>
     </resource-env-ref>
 
+    <context-param>
+        <param-name>resteasy.providers</param-name>
+        <param-value>org.ovirt.optimizer.setup.JacksonContextResolver</param-value>
+    </context-param>
+
     <!-- RESTEasy
-    Disable scanning to workaround sannotation issue on F19 deployment
+    Disable scanning to workaround sannotation issue on F19 deployment //-->
     <context-param>
         <param-name>resteasy.scan</param-name>
-        <param-value>true</param-value>
-    </context-param> //-->
+        <param-value>false</param-value>
+    </context-param>
 
     <context-param>
         <param-name>resteasy.resources</param-name>
-        <param-value>org.ovirt.optimizer.rest.ResultResource</param-value>
+        <param-value>org.ovirt.optimizer.rest.ResultResource,org.ovirt.optimizer.rest.DebugResource</param-value>
     </context-param>
 
     <context-param>

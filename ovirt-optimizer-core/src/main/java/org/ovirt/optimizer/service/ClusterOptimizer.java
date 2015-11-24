@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.service;
 
+import org.optaplanner.core.api.score.Score;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.constraint.ConstraintMatch;
 import org.optaplanner.core.api.score.constraint.ConstraintMatchTotal;
@@ -13,7 +14,6 @@ import org.optaplanner.core.config.solver.termination.TerminationConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
-import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.problemspace.CancelVmRunningFactChange;
 import org.ovirt.optimizer.service.problemspace.ClusterSituation;
 import org.ovirt.optimizer.service.problemspace.EnsureVmRunningFactChange;
@@ -48,7 +48,7 @@ public class ClusterOptimizer implements Runnable {
         void solvingFinished(ClusterOptimizer planner, Thread thread);
     }
 
-    private void addCustomDrlFiles(ScoreDirectorFactoryConfig config, List<File> customDrlFiles) {
+    private static void addCustomDrlFiles(ScoreDirectorFactoryConfig config, List<File> customDrlFiles) {
         if (config.getScoreDrlFileList() != null) {
             config.getScoreDrlFileList().addAll(customDrlFiles);
         } else {
@@ -73,6 +73,12 @@ public class ClusterOptimizer implements Runnable {
             sourceSolution = bestSolution;
         }
 
+        return computeScore(sourceSolution, migrationIds, customDrlFiles);
+    }
+
+    public static HardSoftScore computeScore(OptimalDistributionStepsSolution sourceSolution,
+            List<Map<String, String>> migrationIds,
+            List<File> customDrlFiles) {
         log.debug("Reevaluating solution {}", migrationIds);
 
         SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/scoreonly.xml");
@@ -243,10 +249,11 @@ public class ClusterOptimizer implements Runnable {
      * @param solver
      * @param solution
      */
-    private void recomputeScoreUsingScoreDirector(Solver solver, OptimalDistributionStepsSolution solution) {
+    private static void recomputeScoreUsingScoreDirector(Solver solver, OptimalDistributionStepsSolution solution) {
         ScoreDirector director = solver.getScoreDirectorFactory().buildScoreDirector();
         director.setWorkingSolution(solution);
-        director.calculateScore();
+        Score score = director.calculateScore();
+
         for (ConstraintMatchTotal constraintMatchTotal : director.getConstraintMatchTotals()) {
             String constraintName = constraintMatchTotal.getConstraintName();
             Number weightTotal = constraintMatchTotal.getWeightTotalAsNumber();
@@ -259,7 +266,7 @@ public class ClusterOptimizer implements Runnable {
                 }
             }
         }
-        log.debug("Final score {}", bestSolution.getScore().toString());
+        log.debug("Final score {}", score);
     }
 
     public ClusterInfoUpdater getUpdaterInstance() {
@@ -296,6 +303,10 @@ public class ClusterOptimizer implements Runnable {
 
     private Solver getSolver() {
         return solver;
+    }
+
+    public String getClusterId() {
+        return clusterId;
     }
 
     public void ensureVmIsRunning(String uuid) {

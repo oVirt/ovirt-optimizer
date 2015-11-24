@@ -4,6 +4,11 @@
         <exclusions>
             <module name="org.apache.log4j" />
             <module name="org.slf4j" />
+            <module name="org.jboss.resteasy.resteasy-jackson2-provider"/>
+            <module name="org.jboss.resteasy.resteasy-jettison-provider"/>
         </exclusions>
+        <dependencies>
+            <module name="org.jboss.resteasy.resteasy-jackson-provider" services="import"/>
+        </dependencies>
     </deployment>
 </jboss-deployment-structure>

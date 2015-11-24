@@ -1,13 +1,20 @@
 package org.ovirt.optimizer.service.facts;
 
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.optimizer.service.InfoUtils;
 
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class HostInfo {
 
     private String id;
     private Integer totalCores;
+
+    protected HostInfo() {
+    }
 
     public HostInfo(String id) {
         this.id = id;

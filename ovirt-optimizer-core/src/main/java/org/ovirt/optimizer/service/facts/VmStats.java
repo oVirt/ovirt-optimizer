@@ -1,10 +1,14 @@
 package org.ovirt.optimizer.service.facts;
 
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.ovirt.engine.sdk.entities.Statistic;
 
 import java.math.BigDecimal;
 
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class VmStats {
     private static final String MEM_INSTALLED = "memory.installed";
     private static final String MEM_USED = "memory.used";
@@ -26,6 +30,9 @@ public class VmStats {
     private Float cpuCurrentHypervisor;
     private Float cpuCurrentTotal;
     private Float migrationProgress;
+
+    protected VmStats() {
+    }
 
     public VmStats(String id) {
         this.id = id;

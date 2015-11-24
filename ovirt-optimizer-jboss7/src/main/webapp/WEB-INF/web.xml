@@ -5,4 +5,9 @@
 		  http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
            version="2.5">
     <display-name>oVirt Optimizer REST service</display-name>
+
+    <context-param>
+        <param-name>resteasy.providers</param-name>
+        <param-value>org.ovirt.optimizer.setup.JacksonContextResolver</param-value>
+    </context-param>
 </web-app>

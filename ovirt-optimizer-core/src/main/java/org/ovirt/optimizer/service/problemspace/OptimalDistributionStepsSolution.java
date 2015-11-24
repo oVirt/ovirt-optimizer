@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.service.problemspace;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
 import org.optaplanner.core.api.domain.solution.PlanningEntityCollectionProperty;
 import org.optaplanner.core.api.domain.solution.PlanningSolution;
 import org.optaplanner.core.api.domain.solution.Solution;
@@ -19,6 +20,7 @@ import java.util.Set;
 @PlanningSolution
 public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>,
                                                          ClusterSituation {
+    @JsonIgnore
     private HardSoftScore score;
 
     List<Migration> steps;

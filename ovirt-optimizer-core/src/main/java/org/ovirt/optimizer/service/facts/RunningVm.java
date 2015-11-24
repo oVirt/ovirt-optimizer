@@ -1,5 +1,7 @@
 package org.ovirt.optimizer.service.facts;
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
+
 import javax.xml.bind.annotation.XmlRootElement;
 
 /**
@@ -7,11 +9,13 @@ import javax.xml.bind.annotation.XmlRootElement;
  * UUID is running in the result.
  */
 @XmlRootElement
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class RunningVm {
     private String id;
 
     protected RunningVm() {
-
     }
 
     public RunningVm(String id) {

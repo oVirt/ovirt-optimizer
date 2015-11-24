@@ -1,5 +1,6 @@
 package org.ovirt.optimizer.service.facts;
 
+import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.ovirt.engine.sdk.entities.AffinityGroup;
 import org.ovirt.engine.sdk.entities.VM;
 
@@ -7,12 +8,18 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+@JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
+        getterVisibility=JsonAutoDetect.Visibility.NONE,
+        isGetterVisibility=JsonAutoDetect.Visibility.NONE)
 public class VmAffinityGroup {
 
     private String id;
     private boolean positive;
     private boolean enforcing;
     private Set<String> vmIds;
+
+    protected VmAffinityGroup() {
+    }
 
     public VmAffinityGroup(String id) {
         this.id = id;
