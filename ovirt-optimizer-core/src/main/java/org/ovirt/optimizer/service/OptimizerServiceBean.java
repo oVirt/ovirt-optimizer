@@ -21,6 +21,7 @@ import javax.annotation.PreDestroy;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -284,12 +285,67 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
     @Override
     public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
-        HardSoftScore score = ClusterOptimizer.computeScore(situation, result.getMigrations(), configProvider.customRuleFiles());
+        HardSoftScore score = ClusterOptimizer.computeScore(situation, result.getMigrations(),
+                Collections.<String>emptySet(),
+                configProvider.customRuleFiles());
 
         ScoreResult scoreResult = new ScoreResult();
         scoreResult.setHardScore(score.getHardScore());
         scoreResult.setSoftScore(score.getSoftScore());
         return scoreResult;
+    }
+
+    @Override
+    public Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation,
+            List<Map<String, String>> preSteps, String vmId) {
+        Map<String, ScoreResult> results = new HashMap<>();
+        Map<String, String> migration = new HashMap<>();
+        List<Map<String, String>> migrations = new ArrayList<>();
+
+        if (situation == null) {
+            // Use the latest information when no base state was provided
+            synchronized (clusterOptimizers) {
+                final ClusterOptimizer clusterOptimizer = clusterOptimizers.get(clusterId);
+                if (clusterOptimizer == null) {
+                    return null;
+                }
+
+                situation = clusterOptimizer.getBestSolution();
+            }
+        }
+
+        // Mark the scheduled VM as running
+        Set<String> vmStarts = new HashSet<>();
+        vmStarts.add(vmId);
+
+        if (preSteps != null) {
+            // Use provided migration steps first when available
+            migrations.addAll(preSteps);
+
+            // Mark all preStep VMs as running
+            for (Map<String, String> step: preSteps) {
+                vmStarts.addAll(step.keySet());
+            }
+        }
+
+        // Add the scheduling step migration
+        migrations.add(migration);
+
+        // Compute the score for each possible destination
+        for (Host host: situation.getHosts()) {
+            migration.clear();
+            migration.put(vmId, host.getId());
+
+            HardSoftScore score = ClusterOptimizer.computeScore(situation, migrations,
+                    vmStarts,
+                    configProvider.customRuleFiles());
+            ScoreResult scoreResult = new ScoreResult();
+            scoreResult.setHardScore(score.getHardScore());
+            scoreResult.setSoftScore(score.getSoftScore());
+            results.put(host.getId(), scoreResult);
+        }
+
+        return results;
     }
 
     @Override

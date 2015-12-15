@@ -14,6 +14,7 @@ import org.optaplanner.core.config.solver.termination.TerminationConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.service.facts.RunningVm;
 import org.ovirt.optimizer.service.problemspace.CancelVmRunningFactChange;
 import org.ovirt.optimizer.service.problemspace.ClusterSituation;
 import org.ovirt.optimizer.service.problemspace.EnsureVmRunningFactChange;
@@ -25,10 +26,12 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * This class represents the task for optimization
@@ -73,11 +76,12 @@ public class ClusterOptimizer implements Runnable {
             sourceSolution = bestSolution;
         }
 
-        return computeScore(sourceSolution, migrationIds, customDrlFiles);
+        return computeScore(sourceSolution, migrationIds, Collections.<String>emptySet(), customDrlFiles);
     }
 
     public static HardSoftScore computeScore(OptimalDistributionStepsSolution sourceSolution,
             List<Map<String, String>> migrationIds,
+            Set<String> runningIds,
             List<File> customDrlFiles) {
         log.debug("Reevaluating solution {}", migrationIds);
 
@@ -91,6 +95,11 @@ public class ClusterOptimizer implements Runnable {
         solution.setVms(sourceSolution.getVms());
         solution.setOtherFacts(sourceSolution.getOtherFacts());
         solution.setFixedFacts(sourceSolution.getFixedFacts());
+
+        /* Allow an expected VM start to be specified */
+        for (String id: runningIds) {
+            solution.getOtherFacts().add(new RunningVm(id));
+        }
 
         /* Get id to object mappings for hosts and VMs */
         Map<String, Host> hosts = new HashMap<>();
@@ -137,12 +146,20 @@ public class ClusterOptimizer implements Runnable {
             }
         }
 
+        // It is necessary to have at least one migration object to make
+        // the rules work. It does not have to describe any valid action,
+        // it just needs to be there.
+        if (migrations.isEmpty()) {
+            migrations.add(new Migration());
+        }
+
         /* Compute the migration ordering cache */
         solution.setSteps(migrations);
         solution.establishStepOrdering();
 
         /* Prepare shadow variables */
         ClusterSituation previous = solution;
+
         for (Migration m: migrations) {
             m.recomputeSituationAfter(previous);
             previous = m;
