@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.8
+%define project_version 0.8.1
 %{!?_version: %define _version %{project_version}}
 %{!?_release: %define _release 1}
 
@@ -382,6 +382,10 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %{_javadir}/%{name}/bundled/*
 
 %changelog
+* Tue Dec 15 2015 Martin Sivak <msivak@redhat.com> 0.8.1-1
+- Reuse the API connection to avoid repeated logging in
+  Resolves: rhbz#1290467
+
 * Mon Nov 10 2014 Martin Sivak <msivak@redhat.com> 0.6-1
 - Fix uuid matching rules for even distribution policies
   Resolves: rhbz#1156141
