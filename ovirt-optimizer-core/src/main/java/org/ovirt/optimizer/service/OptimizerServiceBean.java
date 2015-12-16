@@ -285,7 +285,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
     @Override
     public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
-        HardSoftScore score = ClusterOptimizer.computeScore(situation, result.getMigrations(),
+        HardSoftScore score = ScoreOnlySolver.computeScore(situation, result.getMigrations(),
                 Collections.<String>emptySet(),
                 configProvider.customRuleFiles());
 
@@ -336,7 +336,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             migration.clear();
             migration.put(vmId, host.getId());
 
-            HardSoftScore score = ClusterOptimizer.computeScore(situation, migrations,
+            HardSoftScore score = ScoreOnlySolver.computeScore(situation, migrations,
                     vmStarts,
                     configProvider.customRuleFiles());
             ScoreResult scoreResult = new ScoreResult();
