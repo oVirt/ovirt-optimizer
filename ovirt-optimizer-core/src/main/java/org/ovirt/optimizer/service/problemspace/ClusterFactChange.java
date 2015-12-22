@@ -148,11 +148,6 @@ public class ClusterFactChange implements ProblemFactChange {
             }
         }
 
-        /*
-        Enable the following line for Optaplanner 6.3
-        scoreDirector.triggerVariableListeners();
-         */
-
         /* Force refresh of shadow vars even though no migration changed as
          * there might have been a change to the base situation */
         ClusterSituation situation = space;
@@ -171,5 +166,8 @@ public class ClusterFactChange implements ProblemFactChange {
             scoreDirector.afterVariableChanged(m, "start");
             scoreDirector.afterVariableChanged(m, "valid");
         }
+
+        /* Required since Optaplanner 6.3.0 */
+        scoreDirector.triggerVariableListeners();
     }
 }

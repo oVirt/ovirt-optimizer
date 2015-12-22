@@ -30,5 +30,8 @@ public class CancelVmRunningFactChange implements ProblemFactChange {
                 scoreDirector.afterProblemFactRemoved(fact);
             }
         }
+
+        /* Required since Optaplanner 6.3.0 */
+        scoreDirector.triggerVariableListeners();
     }
 }

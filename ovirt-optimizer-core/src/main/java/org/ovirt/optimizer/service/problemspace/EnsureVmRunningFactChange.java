@@ -34,5 +34,8 @@ public class EnsureVmRunningFactChange implements ProblemFactChange {
         scoreDirector.beforeProblemFactAdded(fact);
         space.getFixedFacts().add(fact);
         scoreDirector.afterProblemFactAdded(fact);
+
+        /* Required since Optaplanner 6.3.0 */
+        scoreDirector.triggerVariableListeners();
     }
 }
