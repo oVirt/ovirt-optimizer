@@ -1,8 +1,8 @@
-package org.ovirt.optimizer.service;
+package org.ovirt.optimizer.solver;
 dialect  "java"
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScoreHolder;
-import org.ovirt.optimizer.service.problemspace.Migration;
+import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
 

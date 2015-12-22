@@ -1,0 +1,372 @@
+package org.ovirt.optimizer.solver;
+
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.cdi.Autoload;
+import org.ovirt.optimizer.config.ConfigProvider;
+import org.ovirt.optimizer.ovirt.ClusterDiscovery;
+import org.ovirt.optimizer.ovirt.OvirtClient;
+import org.ovirt.optimizer.rest.dto.DebugSnapshot;
+import org.ovirt.optimizer.rest.dto.Result;
+import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.scheduling.QuartzService;
+import org.ovirt.optimizer.solver.facts.RunningVm;
+import org.ovirt.optimizer.solver.jobs.ClusterDiscoveryTrigger;
+import org.ovirt.optimizer.solver.problemspace.Migration;
+import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
+import org.ovirt.optimizer.solver.thread.ClusterOptimizer;
+import org.ovirt.optimizer.solver.util.SolverUtils;
+import org.quartz.JobDetail;
+import org.slf4j.Logger;
+
+import javax.annotation.ManagedBean;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+
+
+/**
+ * This is the main service class for computing the optimized
+ * Vm to host assignments.
+ */
+@Autoload
+@ApplicationScoped
+@ManagedBean
+public class OptimizerServiceBean implements OptimizerServiceRemote {
+    @Inject
+    private Logger log;
+
+    @Inject
+    QuartzService scheduler;
+
+    @Inject
+    ClusterDiscovery discovery;
+
+    @Inject
+    OvirtClient client;
+
+    @Inject
+    ConfigProvider configProvider;
+
+    QuartzService.Timer discoveryTimer;
+    Set<Thread> threads;
+
+    // This attribute is used by the exported API and has to
+    // be used in thread safe way
+    final Map<String, ClusterOptimizer> clusterOptimizers = new HashMap<>();
+
+    @PostConstruct
+    public void create() {
+        log.info("oVirt optimizer service starting");
+        threads = new HashSet<>();
+        int refresh = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
+        discoveryTimer = scheduler.createTimer(refresh, ClusterDiscoveryTrigger.class);
+    }
+
+    // Synchronized should not be needed, but is here as a
+    // safeguard for prevention from threading mistakes
+    public synchronized void discoveryTimeout(final JobDetail timer){
+        // Check for possible spurious timeouts from old instances
+        if (timer.getKey() != discoveryTimer.getJobDetail().getKey()) {
+            log.warn(String.format("Unknown timeout from %s", timer.toString()));
+            return;
+        }
+
+        log.debug("Discovering clusters...");
+        Set<String> availableClusters = discovery.getClusters();
+        if (availableClusters == null) {
+            log.error("Cluster discovery failed");
+            return;
+        }
+
+        Set<String> missingClusters;
+
+        synchronized (clusterOptimizers) {
+            /* Compute a set of clusters that disappeared */
+            missingClusters = new HashSet<>(clusterOptimizers.keySet());
+            missingClusters.removeAll(availableClusters);
+
+            /* Compute a set of new clusters */
+            availableClusters.removeAll(clusterOptimizers.keySet());
+        }
+
+        Properties config = new ConfigProvider().load().getConfig();
+        final int maxSteps = Integer.parseInt(config.getProperty(ConfigProvider.SOLVER_STEPS));
+
+        for (String clusterId: availableClusters) {
+            log.info(String.format("New cluster %s detected", clusterId));
+
+            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client, configProvider, clusterId, maxSteps, new ClusterOptimizer.Finished() {
+                @Override
+                public void solvingFinished(ClusterOptimizer planner, Thread thread) {
+                    threads.remove(thread);
+                }
+            });
+
+            Thread updater = new Thread(planner.getUpdaterInstance());
+            Thread solver = new Thread(planner);
+
+            updater.start();
+            threads.add(updater);
+
+            solver.start();
+            threads.add(solver);
+
+            synchronized (clusterOptimizers) {
+                clusterOptimizers.put(clusterId, planner);
+            }
+        }
+
+        synchronized (clusterOptimizers) {
+            for (String clusterId: missingClusters) {
+                clusterOptimizers.get(clusterId).terminate();
+                clusterOptimizers.get(clusterId).getUpdaterInstance().terminate();
+                log.info(String.format("Cluster %s was removed", clusterId));
+            }
+        }
+    }
+
+    @PreDestroy
+    public void stop() {
+        log.info("oVirt service service stopping");
+        discoveryTimer.cancel();
+
+        synchronized (clusterOptimizers) {
+            for (ClusterOptimizer clusterOptimizer: clusterOptimizers.values()) {
+                clusterOptimizer.getUpdaterInstance().terminate();
+                clusterOptimizer.terminate();
+            }
+        }
+
+        log.debug("Waiting for threads to finish");
+        // Iterate over copy of the set as the ending threads will
+        // be removed by callback
+        for (Thread thread: new ArrayList<>(threads)) {
+            try {
+                thread.join();
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+            }
+        }
+        log.info("oVirt service service stopped");
+    }
+
+    public Set<String> getAllClusters() {
+        synchronized (clusterOptimizers) {
+            return clusterOptimizers.keySet();
+        }
+    }
+
+    public Set<String> getActiveClusters() {
+        synchronized (clusterOptimizers) {
+            return clusterOptimizers.keySet();
+        }
+    }
+
+    public void computeVmStart(String cluster, String uuid) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return;
+        }
+
+        clusterOptimizer.ensureVmIsRunning(uuid);
+    }
+
+    public void cancelVmStart(String cluster, String uuid) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return;
+        }
+
+        clusterOptimizer.cancelVmIsRunning(uuid);
+    }
+
+    @Override
+    public ScoreResult recomputeScore(String cluster, Result oldResult) {
+        ClusterOptimizer clusterOptimizer;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            return null;
+        }
+
+        ScoreResult scoreResult = new ScoreResult();
+        HardSoftScore score = clusterOptimizer.computeScore(oldResult.getMigrations());
+        scoreResult.setHardScore(score.getHardScore());
+        scoreResult.setSoftScore(score.getSoftScore());
+        return scoreResult;
+    }
+
+    @Override
+    public Result getCurrentResult(String cluster) {
+        ClusterOptimizer clusterOptimizer;
+        Result r;
+
+        synchronized (clusterOptimizers) {
+            clusterOptimizer = clusterOptimizers.get(cluster);
+        }
+
+        if (clusterOptimizer == null) {
+            log.error(String.format("Cluster %s does not exist", cluster));
+            r = Result.createEmpty(cluster);
+        }
+        else {
+            r = getCurrentResult(clusterOptimizer);
+        }
+
+        return r;
+    }
+
+    private Result getCurrentResult(ClusterOptimizer clusterOptimizer) {
+        OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
+
+        Result r = new Result(clusterOptimizer.getClusterId());
+        r.setStatus(Result.ResultStatus.OK);
+        r.setHardScore(best.getScore().getHardScore());
+        r.setSoftScore(best.getScore().getSoftScore());
+
+        r.setHosts(new HashSet<String>());
+        for (Host h: best.getHosts()) {
+            r.getHosts().add(h.getId());
+        }
+
+        r.setVms(new HashSet<String>());
+        for (VM vm: best.getVms()) {
+            r.getVms().add(vm.getId());
+        }
+
+        r.setRequestedVms(new HashSet<String>());
+        for (Object fact: best.getFixedFacts()) {
+            if (fact instanceof RunningVm) {
+                r.getRequestedVms().add(((RunningVm)fact).getId());
+            }
+        }
+
+        r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());
+        r.setVmToHost(best.getFinalSituation().getVmToHostAssignments());
+        r.setCurrentVmToHost(best.getVmToHostAssignments());
+
+        List<Map<String, String>> migrations = new ArrayList<>();
+        for (Migration step: best.getSteps()) {
+            if (!step.isValid()) {
+                continue;
+            }
+            Map<String, String> migration = new HashMap<>();
+            migration.put(step.getVm().getId(), step.getDestination().getId());
+            migrations.add(migration);
+        }
+        r.setMigrations(migrations);
+
+        long time = System.currentTimeMillis();
+        r.setAge(time - best.getTimestamp());
+        return r;
+    }
+
+    @Override
+    public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
+        HardSoftScore score = SolverUtils.computeScore(situation, result.getMigrations(),
+                Collections.<String>emptySet(),
+                configProvider.customRuleFiles());
+
+        ScoreResult scoreResult = new ScoreResult();
+        scoreResult.setHardScore(score.getHardScore());
+        scoreResult.setSoftScore(score.getSoftScore());
+        return scoreResult;
+    }
+
+    @Override
+    public Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation,
+            List<Map<String, String>> preSteps, String vmId) {
+        Map<String, ScoreResult> results = new HashMap<>();
+        Map<String, String> migration = new HashMap<>();
+        List<Map<String, String>> migrations = new ArrayList<>();
+
+        if (situation == null) {
+            // Use the latest information when no base state was provided
+            synchronized (clusterOptimizers) {
+                final ClusterOptimizer clusterOptimizer = clusterOptimizers.get(clusterId);
+                if (clusterOptimizer == null) {
+                    return null;
+                }
+
+                situation = clusterOptimizer.getBestSolution();
+            }
+        }
+
+        // Mark the scheduled VM as running
+        Set<String> vmStarts = new HashSet<>();
+        vmStarts.add(vmId);
+
+        if (preSteps != null) {
+            // Use provided migration steps first when available
+            migrations.addAll(preSteps);
+
+            // Mark all preStep VMs as running
+            for (Map<String, String> step: preSteps) {
+                vmStarts.addAll(step.keySet());
+            }
+        }
+
+        // Add the scheduling step migration
+        migrations.add(migration);
+
+        // Compute the score for each possible destination
+        for (Host host: situation.getHosts()) {
+            migration.clear();
+            migration.put(vmId, host.getId());
+
+            HardSoftScore score = SolverUtils.computeScore(situation, migrations,
+                    vmStarts,
+                    configProvider.customRuleFiles());
+            ScoreResult scoreResult = new ScoreResult();
+            scoreResult.setHardScore(score.getHardScore());
+            scoreResult.setSoftScore(score.getSoftScore());
+            results.put(host.getId(), scoreResult);
+        }
+
+        return results;
+    }
+
+    @Override
+    public Map<String, DebugSnapshot> getDebugSnapshot() {
+        Map<String, DebugSnapshot> snaps = new HashMap<>();
+
+        synchronized (clusterOptimizers) {
+            for (ClusterOptimizer optimizer: clusterOptimizers.values()) {
+                DebugSnapshot snap = new DebugSnapshot();
+                snap.setCluster(optimizer.getClusterId());
+                snap.setState(optimizer.getBestSolution());
+                snap.setResult(getCurrentResult(optimizer));
+                snaps.put(optimizer.getClusterId(), snap);
+            }
+        }
+
+        return snaps;
+    }
+}

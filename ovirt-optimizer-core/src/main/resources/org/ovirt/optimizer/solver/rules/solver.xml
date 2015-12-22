@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <solver>
-    <environmentMode>FULL_ASSERT</environmentMode>
+    <!-- <environmentMode>FULL_ASSERT</environmentMode> //-->
 
     <!-- Domain model configuration -->
     <solutionClass>org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution</solutionClass>
@@ -9,27 +9,28 @@
     <!-- Score configuration -->
     <scoreDirectorFactory>
         <scoreDefinitionType>HARD_SOFT</scoreDefinitionType>
-        <scoreDrl>org/ovirt/optimizer/test/rules/default.drl</scoreDrl>
+        <scoreDrl>org/ovirt/optimizer/solver/rules/default.drl</scoreDrl>
     </scoreDirectorFactory>
 
     <constructionHeuristic>
         <constructionHeuristicType>FIRST_FIT</constructionHeuristicType>
     </constructionHeuristic>
 
+    <daemon>true</daemon>
+
+    <termination>
+        <unimprovedMillisecondsSpentLimit>30000</unimprovedMillisecondsSpentLimit>
+    </termination>
+
     <localSearch>
         <acceptor>
-            <entityTabuSize>7</entityTabuSize>
+            <entityTabuRatio>0.02</entityTabuRatio>
         </acceptor>
 
         <forager>
             <acceptedCountLimit>1000</acceptedCountLimit>
         </forager>
 
-        <termination>
-            <unimprovedMillisecondsSpentLimit>1000</unimprovedMillisecondsSpentLimit>
-        </termination>
-
-        <!-- Workaround for https://issues.jboss.org/browse/PLANNER-235 -->
         <unionMoveSelector>
             <changeMoveSelector>
                 <valueSelector>

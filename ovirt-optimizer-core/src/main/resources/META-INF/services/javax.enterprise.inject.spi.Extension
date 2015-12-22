@@ -1,1 +1,1 @@
-org.ovirt.optimizer.util.AutoloadExtension
+org.ovirt.optimizer.cdi.AutoloadExtension

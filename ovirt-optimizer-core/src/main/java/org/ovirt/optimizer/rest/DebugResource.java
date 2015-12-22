@@ -1,12 +1,10 @@
 package org.ovirt.optimizer.rest;
 
-import org.ovirt.optimizer.common.DebugSnapshot;
-import org.ovirt.optimizer.common.Result;
-import org.ovirt.optimizer.common.ScoreResult;
-import org.ovirt.optimizer.service.OptimizerServiceRemote;
-import org.ovirt.optimizer.service.problemspace.Migration;
-import org.ovirt.optimizer.service.problemspace.OptimalDistributionStepsSolution;
-import org.ovirt.optimizer.util.ConfigProvider;
+import org.ovirt.optimizer.config.ConfigProvider;
+import org.ovirt.optimizer.rest.dto.DebugSnapshot;
+import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.solver.OptimizerServiceRemote;
+import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -18,7 +16,6 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;

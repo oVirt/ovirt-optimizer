@@ -13,7 +13,7 @@ import org.ovirt.engine.sdk.decorators.VM;
 import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.engine.sdk.web.HttpProxy;
 import org.ovirt.engine.sdk.web.HttpProxyBroker;
-import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.solver.facts.RunningVm;
 
 import java.net.URL;
 import java.util.ArrayList;

@@ -1,9 +1,9 @@
 package org.ovirt.optimizer.rest;
 
-import org.ovirt.optimizer.common.Result;
-import org.ovirt.optimizer.common.ScoreResult;
-import org.ovirt.optimizer.service.OptimizerServiceRemote;
-import org.ovirt.optimizer.service.facts.RunningVm;
+import org.ovirt.optimizer.rest.dto.Result;
+import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.solver.OptimizerServiceRemote;
+import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.slf4j.Logger;
 
 import javax.inject.Inject;
