@@ -148,11 +148,28 @@ public class ClusterFactChange implements ProblemFactChange {
             }
         }
 
-        /* Recompute the caches in Migration steps
+        /*
+        Enable the following line for Optaplanner 6.3
+        scoreDirector.triggerVariableListeners();
+         */
+
+        /* Force refresh of shadow vars even though no migration changed as
+         * there might have been a change to the base situation */
         ClusterSituation situation = space;
-        for (Migration step: space.getSteps()) {
-            step.recomputeSituationAfter(situation);
-            situation = step;
-        }*/
+        for (Migration m: space.getSteps()) {
+            log.trace("Recomputing shadow variables in {} ({})", m.toString(), m.getStepsToFinish());
+            scoreDirector.beforeVariableChanged(m, "vmToHostAssignments");
+            scoreDirector.beforeVariableChanged(m, "hostToVmAssignments");
+            scoreDirector.beforeVariableChanged(m, "start");
+            scoreDirector.beforeVariableChanged(m, "valid");
+
+            m.recomputeSituationAfter(situation);
+            situation = m;
+
+            scoreDirector.afterVariableChanged(m, "vmToHostAssignments");
+            scoreDirector.afterVariableChanged(m, "hostToVmAssignments");
+            scoreDirector.afterVariableChanged(m, "start");
+            scoreDirector.afterVariableChanged(m, "valid");
+        }
     }
 }

@@ -86,11 +86,36 @@ public class ClusterOptimizer implements Runnable {
         this.finishedCallback = finishedCallback;
         this.customDrlFiles = customDrlFiles;
 
-        SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/solver.xml");
-        ScoreOnlySolver.addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), this.customDrlFiles);
-        SolverConfig solverConfig = solverFactory.getSolverConfig();
-        TerminationConfig terminationConfig = solverConfig.getTerminationConfig();
-        terminationConfig.setUnimprovedMillisecondsSpentLimit(unimprovedMilisLimit);
+        SolverFactory solverFactory;
+
+        if (maxSteps > 0) {
+            // Construct full optimizer
+             solverFactory =
+                    SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/solver.xml");
+
+            ScoreOnlySolver.addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), this.customDrlFiles);
+
+            // Suspend solver when no better solution has been found for some time
+            SolverConfig solverConfig = solverFactory.getSolverConfig();
+            TerminationConfig terminationConfig = solverConfig.getTerminationConfig();
+            terminationConfig.setUnimprovedMillisecondsSpentLimit(unimprovedMilisLimit);
+        } else {
+            // No optimization requested, degrade to daemonized score only solver and
+            // provide only simple one-by-one scheduling as a service
+            solverFactory =
+                    SolverFactory.createFromXmlResource("org/ovirt/optimizer/service/rules/scoreonly.xml");
+
+            // There has to be at least one empty step to trigger the final situation rules
+            maxSteps = 1;
+
+            ScoreOnlySolver.addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), this.customDrlFiles);
+
+            // Make sure the solver runs in daemon mode
+            SolverConfig solverConfig = solverFactory.getSolverConfig();
+            solverConfig.setDaemon(true);
+
+            log.warn("Optimization disabled, enabling scoring subsystem only.");
+        }
 
         solver = solverFactory.buildSolver();
 
