@@ -57,9 +57,14 @@ public class TestDroolsJITCrash  {
         bestSolution.getVms().add(vm);
 
         // Prepare the step placeholders
+        ClusterSituation last = bestSolution;
         List<Migration> migrationSteps = new ArrayList<>();
         for (int i = 0; i < 5; i++) {
-            migrationSteps.add(new Migration());
+            final Migration mg = new Migration();
+            mg.recomputeSituationAfter(last);
+            last = mg;
+            migrationSteps.add(mg);
+
         }
         bestSolution.setSteps(migrationSteps);
         bestSolution.establishStepOrdering();
