@@ -1,7 +1,7 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.9
+%define project_version 0.9.1
 %{!?_version: %define _version %{project_version}}
-%{!?_release: %define _release 1}
+%{!?_release: %define _release 2}
 
 %global engine_etc /etc/ovirt-engine
 %global engine_data %{_datadir}/ovirt-engine
@@ -473,6 +473,12 @@ install dist/etc/*.properties %{buildroot}/etc/%{name}
 %endif
 
 %changelog
+* Wed Dec 23 2015 Martin Sivak <msivak@redhat.com> 0.9.1-2
+- Fix dependency for Fedora 23
+
+* Thu Oct  1 2015 Martin Sivak <msivak@redhat.com> 0.9.1-1
+- Reuse the oVirt API instance to avoid login/logout noise
+
 * Wed May 27 2015 Martin Sivak <msivak@redhat.com> 0.9-1
 - Proper service files for SysV and systemd
 - ovirt-optimizer-setup tool
