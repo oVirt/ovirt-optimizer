@@ -14,5 +14,12 @@ VERSION=${VERSION/-SNAPSHOT/-0.$(git rev-list HEAD --count).$(date +%04Y%02m%02d
 IFS='-' read -ra VERSION <<< "$VERSION"
 
 git archive --format=tar HEAD | gzip -9 >$TMPDIR/SOURCES/ovirt-optimizer-$VERSION.tar.gz
-rpmbuild --define "_topdir $TMPDIR" --define "_version $VERSION" --define "_release ${VERSION[1]-1}" -bs --nodeps $TMPDIR/SPECS/ovirt-optimizer.spec
+
+if [ ${VERSION[1]-""} != "" ]; then
+DEFRELEASE="--define \"_release ${VERSION[1]-1}\""
+else
+DEFRELEASE=""
+fi
+
+rpmbuild --define "_topdir $TMPDIR" --define "_version $VERSION" $DEFRELEASE -bs --nodeps $TMPDIR/SPECS/ovirt-optimizer.spec
 
