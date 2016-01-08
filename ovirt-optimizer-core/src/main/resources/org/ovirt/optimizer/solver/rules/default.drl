@@ -10,6 +10,7 @@ import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.optimizer.optaplanner.RuleLogger;
 
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.solver.facts.PolicyUnit;
@@ -32,6 +33,8 @@ as the data source does sometimes return the same object as two different instan
 Hard score checks the situation after each active migration step + the final situation. If you
 want to check the actual migration itself (pinToHost check) remove the finalStep == true option.
 
+Secondary instances should be checked for hard constraints, but should only contribute to the soft score.
+
 rule "hardScoreTemplate"
     when
         exists PolicyUnitEnabled(uuid == "xxx-xxx")
@@ -39,8 +42,9 @@ rule "hardScoreTemplate"
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         $host: Host($memory: memory, $step.finalStep == true || id == $destination.id)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-                $vm : VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
+                $inst: Instance($vmId : vmId, primary == true,
+                                $step.getAssignment(id) == $host.id) and
+                $vm : VM(id == $vmId,
                          $requiredMemory : memoryPolicy.guaranteed)
                   and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
@@ -49,14 +53,33 @@ rule "hardScoreTemplate"
         scoreHolder.addHardConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
 end
 
+rule "hardScoreForHaReservationTemplate"
+    when
+        exists PolicyUnitEnabled(uuid == "xxx-xxx")
+        // Remove the destination var if the move can violate hard constraints on the source host
+        $step: Migration(valid == true || finalStep == true, $destination: destination)
+        $host: Host($memory: memory, $step.finalStep == true || id == $destination.id)
+        $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
+                $inst: Instance($vmId : vmId, primary == false,
+                                $step.getAssignment(id) == $host.id) and
+                $vm : VM(id == $vmId,
+                         $requiredMemory : memoryPolicy.guaranteed)
+                  and exists RunningVm(id == $vmId),
+                sum($requiredMemory)
+        )
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, $memory.intValue() - $requiredMemoryTotal.intValue());
+end
+
 rule "softScoreTemplate"
     when
         PolicyUnitEnabled(uuid == "xxx-xxx", $factor : factor)
         $finalStep: Migration(finalStep == true)
         $host: Host($memory: memory)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-                $vm : VM($vmId : id,
-                         $finalStep.getAssignment($vmId) == $host.id,
+                $inst: Instance($vmId : vmId,
+                                $finalstep.getAssignment(id) == $host.id) and
+                $vm : VM(id == $vmId,
                          $requiredMemory : memoryPolicy.guaranteed)
                  and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
@@ -77,8 +100,9 @@ rule "notEnoughGuaranteedMemory"
         $step: Migration(valid == true || finalStep == true, $destination : destination)
         $host: Host($step.finalStep == true || id == $destination.id, $memory: memory - 256 - 65)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
-                VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
+                $inst: Instance($vmId : vmId, $instId : id, primary == true,
+                                $step.getAssignment($instId) == $host.id) and
+                $vm : VM(id == $vmId,
                          $requiredMemory : memoryPolicy.guaranteed + 65)
                      and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
@@ -98,8 +122,9 @@ rule "notEnoughMemory"
         $host: Host($step.finalStep == true || id == $destination.id,
                     $memory: ((memory - 256 - 65) * 100 + (memory - 256 - 65) * (cluster.memoryPolicy.overCommit.percent - 100)) / 100)
         $requiredMemoryTotal : Number(longValue > $memory) from accumulate(
-                VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
+                $inst: Instance($vmId : vmId, $instId : id, primary == true,
+                                $step.getAssignment($instId) == $host.id) and
+                $vm : VM(id == $vmId,
                          $requiredMemory : memory + 65)
                     and exists RunningVm(id == $vmId),
                 sum($requiredMemory)
@@ -110,18 +135,19 @@ end
 
 // CpuLevelFilterPolicyUnit
 
-/* Compare the number of cores */
+/* Compare the number of cores for primary instances */
 rule "notEnoughCores"
     when
         exists PolicyUnitEnabled(uuid == PolicyUnit.CPU_FILTER.uuid)
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         Host( $id : id, $step.finalStep == true || id == $destination.id )
         HostInfo(id == $id, $cores : totalCores)
-        VM($vmId : id, $step.getAssignment($vmId) == $id)
+        Instance($vmId : vmId, $step.getAssignment(id) == $id, $primary : primary)
         VmInfo(id == $vmId, $requiredCores : totalCores, $requiredCores > $cores)
         exists RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCores);
+        if ($primary) scoreHolder.addHardConstraintMatch(kcontext, $cores - $requiredCores);
+        else scoreHolder.addSoftConstraintMatch(kcontext, $cores - $requiredCores);
 end
 
 
@@ -137,16 +163,16 @@ rule "evenDistributionCpu"
         Host( $id2 : id , $id1 != $id2)
         HostInfo(id == $id2, $cores2 : totalCores)
         $cpuTotal1 : Number() from accumulate(
-             VM($vmId1 : id,
-                $finalStep.getAssignment($vmId1) == $id1)
+             Instance($vmId1 : vmId,
+                $finalStep.getAssignment(id) == $id1)
               and VmInfo(id == $vmId1, $vmCores : totalCores)
               and VmStats(id == $vmId1, $cpu : cpuCurrentTotal)
               and exists RunningVm(id == $vmId1),
              sum($cpu * $vmCores)
         )
         $cpuTotal2 : Number() from accumulate(
-             VM($vmId2 : id,
-                $finalStep.getAssignment($vmId2) == $id2)
+             Instance($vmId2 : vmId,
+                $finalStep.getAssignment(id) == $id2)
               and VmInfo(id == $vmId2, $vmCores : totalCores)
               and VmStats(id == $vmId2, $cpu : cpuCurrentTotal)
               and exists RunningVm(id == $vmId2),
@@ -165,15 +191,17 @@ rule "evenDistributionMemory"
        Host($id1 : id, $mem1 : memory)
        Host($id2 : id, $id1 != $id2, $mem2 : memory)
        $requiredMemoryTotal1 : Number() from accumulate(
-               VM($vmId1 : id,
-                  $finalStep.getAssignment($vmId1) == $id1,
+                Instance($vmId1 : vmId,
+                         $finalStep.getAssignment(id) == $id1) and
+                VM(id == $vmId1,
                   $requiredMemory : memoryPolicy.guaranteed)
                 and exists RunningVm(id == $vmId1),
                sum($requiredMemory)
        )
        $requiredMemoryTotal2 : Number() from accumulate(
-               VM($vmId2 : id,
-                  $finalStep.getAssignment($vmId2) == $id2,
+                Instance($vmId2 : vmId,
+                         $finalStep.getAssignment(id) == $id2) and
+                VM(id == $vmId2,
                   $requiredMemory2 : memoryPolicy.guaranteed)
                and exists RunningVm(id == $vmId2),
                sum($requiredMemory2)
@@ -195,7 +223,7 @@ rule "cpuHighUtilization"
         Host($id : id)
         HostInfo(id == $id, $cores : totalCores != null)
         Number ( (floatValue / $cores) > $highUtilThreshold ) from accumulate(
-             VM($vmId : id,  $finalStep.getAssignment($vmId) == $id)
+             Instance($vmId : vmId,  $finalStep.getAssignment(id) == $id)
              and VmInfo(id == $vmId, $vmCores : totalCores != null)
              and VmStats(id == $vmId, $vmCpu : cpuCurrentTotal != null)
              and exists RunningVm(id == $vmId),
@@ -215,7 +243,8 @@ rule "memoryHighUtilization"
         $finalStep: Migration(finalStep == true)
         Host($id : id, $hostMem : memory)
         Number ( longValue > ($hostMem - $maxFreeMem) ) from accumulate(
-             VM($vmId : id,  $finalStep.getAssignment($vmId) == $id, $vmMem : memoryPolicy.guaranteed)
+             Instance($vmId : vmId,  $finalStep.getAssignment(id) == $id)
+             and VM(id == $vmId, $vmMem : memoryPolicy.guaranteed)
              and VmInfo(id == $vmId)
              and exists RunningVm(id == $vmId),
              sum($vmMem)
@@ -229,14 +258,15 @@ end
 rule "hostedEngineClusterFilter"
   when
       exists PolicyUnitEnabled(uuid == PolicyUnit.HOSTED_ENGINE_FILTER.uuid)
-      $step: Migration(destination != null && vm != null || finalStep == true, $destination: destination)
+      $step: Migration(destination != null && instance != null || finalStep == true, $destination: destination)
       $host: Host($step.finalStep == true || id == $destination.id,
                   hostedEngine == null || hostedEngine.score == 0)
-      $vm: VM($vmId : id, origin == "hostedEngine",
-          $step.getAssignment($vmId) == $host.id)
+      Instance($vmId : vmId, $step.getAssignment(id) == $host.id, $primary : primary)
+      $vm: VM($vmId == id, origin == "hostedEngine")
       RunningVm(id == $vmId)
   then
-      scoreHolder.addHardConstraintMatch(kcontext, -1);
+      if ($primary) scoreHolder.addHardConstraintMatch(kcontext, -1);
+      else scoreHolder.addSoftConstraintMatch(kcontext, -1000);
 end
 
 // HostedEngineHAClusterWeightPolicyUnit
@@ -247,8 +277,8 @@ rule "hostedEngineClusterWeight"
       exists PolicyUnitEnabled(uuid == PolicyUnit.HOSTED_ENGINE_WEIGHT.uuid)
       $step: Migration(finalStep == true)
       $host: Host(hostedEngine != null, $dScore: hostedEngine.score)
-      $vm: VM($vmId : id, origin == "hostedEngine",
-          $step.getAssignment($vmId) == $host.id)
+      Instance($vmId : vmId, $step.getAssignment(id) == $host.id, $primary : primary)
+      $vm: VM($vmId == id, origin == "hostedEngine")
       RunningVm(id == $vmId)
 
       // Find best HE host score
@@ -267,15 +297,16 @@ rule "checkRequiredDisplayNetworks"
         exists PolicyUnitEnabled(uuid == PolicyUnit.NETWORK_FILTER.uuid)
         $step: Migration(valid == true || finalStep == true, $destination: destination)
         $host: Host($step.finalStep == true || id == $destination.id)
-        $vm: VM($vmId : id,
-           $step.getAssignment($vmId) == $host.id)
+        $vm: Instance($vmId : vmId, $primary : primary,
+                      $step.getAssignment(id) == $host.id)
         RunningVm(id == $vmId)
         ArrayList(size == 0) from collect(
            Network(dataCenter.id == $host.cluster.dataCenter.id,
                    display == true)
         )
     then
-        scoreHolder.addHardConstraintMatch(kcontext, -1);
+        if ($primary) scoreHolder.addHardConstraintMatch(kcontext, -1);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1);
 
 end
 
@@ -283,10 +314,10 @@ end
 rule "pinToHostMigration"
     when
         exists PolicyUnitEnabled(uuid == PolicyUnit.PIN_TO_HOST_FILTER.uuid)
-        $step: Migration(valid == true, start == false, $vm: vm, $destination: destination)
-        VM(id == $vm.id,
+        $step: Migration(valid == true, start == false, $inst: instance, $destination: destination)
+        VM(id == $inst.vmId,
            placementPolicy.affinity != "migratable")
-        RunningVm(id == $vm.id)
+        RunningVm(id == $inst.vmId)
     then
         scoreHolder.addHardConstraintMatch(kcontext, -1);
 end
@@ -295,12 +326,12 @@ end
 rule "pinToHostStart"
     when
         exists PolicyUnitEnabled(uuid == PolicyUnit.PIN_TO_HOST_FILTER.uuid)
-        $step: Migration(valid == true, start == true, $vm: vm, $destination: destination)
+        $step: Migration(valid == true, start == true, $inst: instance, $destination: destination)
         $host: Host(id == $destination.id)
-        VM(id == $vm.id,
+        VM(id == $inst.vmId,
            placementPolicy.host != null,
            placementPolicy.host.id != $host.id)
-        RunningVm(id == $vm.id)
+        RunningVm(id == $inst.vmId)
     then
         scoreHolder.addHardConstraintMatch(kcontext, -1);
 end
@@ -311,19 +342,20 @@ end
 rule "ensureVmRunning"
     when
         $step: Migration(finalStep == true)
-        $vm: VM($vmId : id,
-                $step.getAssignment($vmId) == null)
+        Instance($vmId : vmId, $primary : primary,
+                 $step.getAssignment(id) == null)
         RunningVm(id == $vmId)
     then
-        scoreHolder.addHardConstraintMatch(kcontext, -10000);
+        if ($primary) scoreHolder.addHardConstraintMatch(kcontext, -10000);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1000);
 end
 
 // Ensure DOWN VMs are not started without request
 rule "ensureVmNotRunning"
     when
         $step: Migration(finalStep == true)
-        $vm: VM($vmId : id,
-                $step.getAssignment($vmId) != null)
+        $vm: Instance($vmId : vmId,
+                      $step.getAssignment(id) != null)
         not(exists RunningVm(id == $vmId))
     then
         scoreHolder.addHardConstraintMatch(kcontext, -10000);
@@ -332,8 +364,8 @@ end
 rule "ensureVmRunningEarly"
     when
         $step: Migration(valid == true)
-        $vm: VM($vmId : id,
-                $step.getAssignment($vmId) == null)
+        Instance($vmId : vmId, primary == true,
+                 $step.getAssignment(id) == null)
         RunningVm(id == $vmId)
     then
         scoreHolder.addSoftConstraintMatch(kcontext, -1);
@@ -380,8 +412,8 @@ rule "consolidateVMs"
        $finalStep: Migration(finalStep == true)
        Host($id1 : id)
        exists (
-           VM( $vmId : id,
-               $finalStep.getAssignment($vmId) == $id1) and
+           Instance( $vmId : vmId, primary == true,
+                     $finalStep.getAssignment(id) == $id1) and
            RunningVm(id == $vmId)
        )
    then
@@ -397,14 +429,14 @@ rule "balancedVmCount"
        Host($id1 : id)
        Host($id2 : id, $id1 != $id2)
        $vmCount1 : Number() from accumulate(
-               VM($vmId1 : id,
-                  $finalStep.getAssignment($vmId1) == $id1)
+               Instance($vmId1 : id, primary == true,
+                        $finalStep.getAssignment(id) == $id1)
                and exists RunningVm(id == $vmId1),
                sum(1)
        )
        $vmCount2 : Number(Math.abs(intValue - $vmCount1.intValue()) > $migrationThreshold) from accumulate(
-               VM($vmId2 : id,
-                  $finalStep.getAssignment($vmId2) == $id2)
+               Instance($vmId2 : vmId, primary == true,
+                        $finalStep.getAssignment(id) == $id2)
                and exists RunningVm(id == $vmId2),
                sum(1)
        )
@@ -417,11 +449,12 @@ rule "vmAffinityEnforcingPositive"
         exists PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_FILTER.uuid)
         VmAffinityGroup(positive == true, enforcing == true, $vmIds : vmIds)
         $step : Migration(valid == true || finalStep == true)
-        VM( $id1 : id, id memberOf $vmIds )
-        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+        Instance( $id1 : id, $vmId : vmId, vmId memberOf $vmIds, $primary : primary )
+        Instance( $id2 : id, vmId memberOf $vmIds, $id1 != $id2, vmId != $vmId, $primary2 : primary,
             $step.getAssignment($id1) != $step.getAssignment($id2))
     then
-        scoreHolder.addHardConstraintMatch(kcontext, -10);
+        if ($primary == true && $primary2 == true) scoreHolder.addHardConstraintMatch(kcontext, -10);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1);
 end
 
 rule "vmAffinityEnforcingNegative"
@@ -429,11 +462,12 @@ rule "vmAffinityEnforcingNegative"
         exists PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_FILTER.uuid)
         VmAffinityGroup(positive == false, enforcing == true, $vmIds : vmIds)
         $step : Migration(valid == true || finalStep == true)
-        VM( $id1 : id, id memberOf $vmIds )
-        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+        Instance( $id1 : id, $vmId : vmId, vmId memberOf $vmIds, $primary : primary )
+        Instance( $id2 : id, vmId memberOf $vmIds, $id1 != $id2, vmId != $vmId, $primary2 : primary,
             $step.getAssignment($id1) == $step.getAssignment($id2))
     then
-        scoreHolder.addHardConstraintMatch(kcontext, -10);
+        if ($primary == true && $primary2 == true) scoreHolder.addHardConstraintMatch(kcontext, -10);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1);
 end
 
 
@@ -442,11 +476,12 @@ rule "vmAffinityNotEnforcingPositive"
         PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_WEIGHT.uuid, $factor : factor)
         VmAffinityGroup(positive == true, enforcing == false, $vmIds : vmIds)
         $step : Migration(finalStep == true)
-        VM( $id1 : id, id memberOf $vmIds )
-        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+        Instance( $id1 : id, $vmId : vmId, vmId memberOf $vmIds, $primary : primary )
+        Instance( $id2 : id, vmId memberOf $vmIds, $id1 != $id2, vmId != $vmId, $primary2 : primary,
             $step.getAssignment($id1) != $step.getAssignment($id2))
     then
-        scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
+        if ($primary == true && $primary2 == true) scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1 * $factor);
 end
 
 
@@ -455,9 +490,20 @@ rule "vmAffinityNotEnforcingNegative"
         PolicyUnitEnabled(uuid == PolicyUnit.VM_AFFINITY_WEIGHT.uuid, $factor : factor)
         VmAffinityGroup(positive == false, enforcing == false, $vmIds : vmIds)
         $step : Migration(finalStep == true)
-        VM( $id1 : id, id memberOf $vmIds )
-        VM( $id2 : id, id memberOf $vmIds, id != $id1,
+        Instance( $id1 : id, $vmId : vmId, vmId memberOf $vmIds, $primary : primary )
+        Instance( $id2 : id, vmId memberOf $vmIds, $id1 != $id2, vmId != $vmId, $primary2 : primary,
             $step.getAssignment($id1) == $step.getAssignment($id2))
     then
-        scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
+        if ($primary == true && $primary2 == true) scoreHolder.addSoftConstraintMatch(kcontext, -100 * $factor);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -1 * $factor);
+end
+
+// The spaces reserved for a HA VM must be on distinct hosts
+rule "haReservationHasToUseDifferentHost"
+    when
+        Instance( $id1 : id, $vmId : vmId )
+        Instance( $id2 : id, id != $id1, $vmId == vmId )
+        Migration(getAssignment($id1) == getAssignment($id2))
+    then
+        scoreHolder.addSoftConstraintMatch(kcontext, -10);
 end

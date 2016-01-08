@@ -13,7 +13,7 @@ public interface OptimizerServiceRemote {
     Result getCurrentResult(String cluster);
     ScoreResult recomputeScore(String cluster, Result oldResult);
     ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result);
-    Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation, List<Map<String, String>> preSteps, String vm);
+    Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation, Result baseResult, String vm);
     void computeVmStart(String cluster, String uuid);
     void cancelVmStart(String cluster, String uuid);
 }

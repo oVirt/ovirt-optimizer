@@ -8,6 +8,8 @@ import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.cdi.LoggerFactory;
+import org.ovirt.optimizer.solver.facts.Instance;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -27,7 +29,8 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     Set<Host> hosts;
     Set<Object> otherFacts;
     Set<Object> fixedFacts;
-    Set<VM> vms;
+    Map<String, VM> vms;
+    Set<Instance> instances;
 
     // Timestamp when the solution was returned from optaplanner
     private long timestamp;
@@ -53,10 +56,11 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     @Override
     public Collection<?> getProblemFacts() {
         Collection<Object> facts = new ArrayList<>();
-        facts.addAll(vms);
+        facts.addAll(instances);
         facts.addAll(hosts);
         facts.addAll(otherFacts);
         facts.addAll(fixedFacts);
+        facts.addAll(vms.values());
         return facts;
     }
 
@@ -65,17 +69,17 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
         return hosts;
     }
 
-    public void setVms(Set<VM> vms) {
-        this.vms = vms;
+    public void setInstances(Set<Instance> instances) {
+        this.instances = instances;
     }
 
     public void setHosts(Set<Host> hosts) {
         this.hosts = hosts;
     }
 
-    @ValueRangeProvider(id = "vms")
-    public Set<VM> getVms() {
-        return vms;
+    @ValueRangeProvider(id = "instances")
+    public Set<Instance> getInstances() {
+        return instances;
     }
 
     public Set<Object> getOtherFacts() {
@@ -96,27 +100,30 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     }
 
     @Override
-    public Map<String, String> getVmToHostAssignments() {
-        Map<String, String> situation = new HashMap<>();
-        for (VM vm: vms) {
-            situation.put(vm.getId(), vm.getHost()==null ? null : vm.getHost().getId());
+    public Map<Long, String> getInstanceToHostAssignments() {
+        Map<Long, String> situation = new HashMap<>();
+        for (Instance instance: instances) {
+            VM vm = vms.get(instance.getVmId());
+            situation.put(instance.getId(), vm.getHost()==null ? null : vm.getHost().getId());
         }
         return situation;
     }
 
     @Override
-    public Map<String, Set<String>> getHostToVmAssignments() {
-        Map<String, Set<String>> situation = new HashMap<>();
+    public Map<String, Set<Long>> getHostToInstanceAssignments() {
+        Map<String, Set<Long>> situation = new HashMap<>();
         for (Host h: hosts) {
-            situation.put(h.getId(), new HashSet<String>());
+            situation.put(h.getId(), new HashSet<Long>());
         }
 
-        for (VM vm: vms) {
+        for (Instance instance: instances) {
+            VM vm = vms.get(instance.getVmId());
+
             if (vm.getHost() == null) {
                 continue;
             }
             
-            situation.get(vm.getHost().getId()).add(vm.getId());
+            situation.get(vm.getHost().getId()).add(instance.getId());
         }
 
         return situation;
@@ -145,5 +152,13 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
 
     public void setTimestamp(long timestamp) {
         this.timestamp = timestamp;
+    }
+
+    public Map<String, VM> getVms() {
+        return vms;
+    }
+
+    public void setVms(Map<String, VM> vms) {
+        this.vms = vms;
     }
 }

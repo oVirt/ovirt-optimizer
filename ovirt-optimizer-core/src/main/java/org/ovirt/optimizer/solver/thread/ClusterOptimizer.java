@@ -11,10 +11,12 @@ import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.optimizer.config.ConfigProvider;
 import org.ovirt.optimizer.ovirt.OvirtClient;
+import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.solver.factchanges.CancelVmRunningFactChange;
 import org.ovirt.optimizer.solver.factchanges.ClusterUpdateAvailable;
 import org.ovirt.optimizer.solver.factchanges.ClusterUpdateAvailableForOptimizer;
 import org.ovirt.optimizer.solver.factchanges.EnsureVmRunningFactChange;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.problemspace.ClusterSituation;
 import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
@@ -25,6 +27,7 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -54,10 +57,10 @@ public class ClusterOptimizer implements Runnable {
      * This method creates a new solver with disabled construction heuristics
      * and local search.
      *
-     * @param migrationIds
+     * @param oldResult
      * @return HardSoftScore of the migrations
      */
-    public HardSoftScore computeScore(List<Map<String, String>> migrationIds) {
+    public HardSoftScore computeScore(Result oldResult) {
         OptimalDistributionStepsSolution sourceSolution = null;
 
         synchronized (ClusterOptimizer.this) {
@@ -65,7 +68,7 @@ public class ClusterOptimizer implements Runnable {
         }
 
         return SolverUtils.computeScore(sourceSolution,
-                migrationIds,
+                oldResult,
                 Collections.<String>emptySet(),
                 customDrlFiles);
     }
@@ -161,9 +164,10 @@ public class ClusterOptimizer implements Runnable {
         bestSolution = new OptimalDistributionStepsSolution();
 
         bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setVms(new HashSet<VM>());
+        bestSolution.setInstances(new HashSet<Instance>());
         bestSolution.setOtherFacts(new HashSet<Object>());
         bestSolution.setFixedFacts(new HashSet<Object>());
+        bestSolution.setVms(new HashMap<String, VM>());
 
         // Prepare the step placeholders
         List<Migration> migrationSteps = new ArrayList<>();

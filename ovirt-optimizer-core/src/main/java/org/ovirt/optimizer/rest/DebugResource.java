@@ -2,6 +2,7 @@ package org.ovirt.optimizer.rest;
 
 import org.ovirt.optimizer.config.ConfigProvider;
 import org.ovirt.optimizer.rest.dto.DebugSnapshot;
+import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.rest.dto.ScoreResult;
 import org.ovirt.optimizer.solver.OptimizerServiceRemote;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
@@ -62,7 +63,7 @@ public class DebugResource {
         }
 
         OptimalDistributionStepsSolution baseSolution = null;
-        List<Map<String, String>> preSteps = Collections.emptyList();
+        Result baseResult = null;
 
         if (snapshots != null) {
             DebugSnapshot snapshot = snapshots.get(cluster);
@@ -70,16 +71,11 @@ public class DebugResource {
             if (snapshot != null) {
                 // Get the provided cluster state
                 baseSolution = snapshot.getState();
-
-                // Get the provided pending migrations
-                if (snapshot.getResult() != null
-                        && snapshot.getResult().getMigrations() != null) {
-                    preSteps = snapshot.getResult().getMigrations();
-                }
+                baseResult = snapshot.getResult();
             }
         }
 
-        return optimizer.simpleSchedule(cluster, baseSolution, preSteps, vm);
+        return optimizer.simpleSchedule(cluster, baseSolution, baseResult, vm);
     }
 
     @POST

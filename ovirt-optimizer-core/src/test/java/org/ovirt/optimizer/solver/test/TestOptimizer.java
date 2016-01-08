@@ -12,6 +12,7 @@ import org.ovirt.engine.sdk.entities.MemoryPolicy;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.entities.VmPlacementPolicy;
 import org.ovirt.optimizer.solver.facts.HostInfo;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.PolicyUnit;
 import org.ovirt.optimizer.solver.facts.PolicyUnitEnabled;
 import org.ovirt.optimizer.solver.facts.RunningVm;
@@ -25,8 +26,10 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class TestOptimizer {
@@ -37,6 +40,7 @@ public class TestOptimizer {
 
     HashSet<VmInfo> vmInfos = new HashSet<>();
     HashSet<HostInfo> hostInfos = new HashSet<>();
+    Map<VM, Instance> primaryInstances = new HashMap<>();
 
     public TestOptimizer(){
         this(EnumSet.noneOf(ClusterFeatures.class));
@@ -48,9 +52,10 @@ public class TestOptimizer {
         // Create new solution space
         bestSolution = new OptimalDistributionStepsSolution();
         bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setVms(new HashSet<VM>());
+        bestSolution.setInstances(new HashSet<Instance>());
         bestSolution.setOtherFacts(new HashSet<Object>());
         bestSolution.setFixedFacts(new HashSet<Object>());
+        bestSolution.setVms(new HashMap<String, VM>());
 
         // Create cluster
         cluster = new Cluster();
@@ -77,7 +82,7 @@ public class TestOptimizer {
             situation = m;
         }
 
-        for (VM vm : bestSolution.getVms()) {
+        for (VM vm : bestSolution.getVms().values()) {
             if (vm.getHost() != null) {
                 bestSolution.getOtherFacts().add(new RunningVm(vm.getId()));
             }
@@ -91,7 +96,7 @@ public class TestOptimizer {
             bestSolution.getFixedFacts().add(info);
         }
 
-        for(VM vm : bestSolution.getVms()){
+        for(VM vm : bestSolution.getVms().values()){
             VmInfo info = VmInfo.createFromVm(vm, true);
             vmInfos.add(info);
             bestSolution.getFixedFacts().add(info);
@@ -126,17 +131,21 @@ public class TestOptimizer {
         return score;
     }
 
-    public TestOptimizer addMigration(VM vm, Host destination) {
+    public TestOptimizer addMigration(Instance vm, Host destination) {
         if (destination != null) {
             bestSolution.getHosts().add(destination);
         }
 
         if (vm != null) {
-            bestSolution.getVms().add(vm);
+            bestSolution.getInstances().add(vm);
         }
 
         bestSolution.getSteps().add(new Migration(vm, destination));
         return this;
+    }
+
+    public TestOptimizer addMigration(VM vm, Host destination) {
+        return addMigration(primaryInstances.get(vm), destination);
     }
 
     public TestOptimizer setNumberOfSteps(int count) {
@@ -150,7 +159,10 @@ public class TestOptimizer {
     }
 
     public TestOptimizer addVm(VM vm) {
-        bestSolution.getVms().add(vm);
+        bestSolution.getVms().put(vm.getId(), vm);
+        final Instance instance = new Instance(vm);
+        primaryInstances.put(vm, instance);
+        bestSolution.getInstances().add(instance);
         return this;
     }
 
@@ -190,7 +202,7 @@ public class TestOptimizer {
         vm.getCpu().setArchitecture("Westmere");
         vm.getCpu().setTopology(new CpuTopology());
 
-        bestSolution.getVms().add(vm);
+        addVm(vm);
 
         return vm;
     }
@@ -205,8 +217,12 @@ public class TestOptimizer {
         host.getCpu().setArchitecture("Westmere");
         host.getCpu().setTopology(new CpuTopology());
 
-        bestSolution.getHosts().add(host);
+        addHost(host);
 
         return host;
+    }
+
+    public Instance getPrimaryInstance(VM vm) {
+        return primaryInstances.get(vm);
     }
 }

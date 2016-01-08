@@ -4,6 +4,7 @@ import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.optaplanner.core.impl.solver.ProblemFactChange;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.problemspace.ClusterSituation;
 import org.ovirt.optimizer.solver.problemspace.Migration;
@@ -56,13 +57,16 @@ public class ClusterFactChange implements ProblemFactChange {
         }
 
         // Create new host and vm fact set to not disturb other solutions
-        space.setHosts(new HashSet<Host>(space.getHosts()));
-        space.setVms(new HashSet<VM>(space.getVms()));
-        space.setOtherFacts(new HashSet<Object>(space.getOtherFacts()));
+        space.setHosts(new HashSet<>(space.getHosts()));
+        space.setInstances(new HashSet<>(space.getInstances()));
+        space.setOtherFacts(new HashSet<>(space.getOtherFacts()));
 
         // Record which host fact instances need to be removed later
         Collection<Host> oldHosts = new ArrayList<>(space.getHosts());
-        Collection<VM> oldVMs = new ArrayList<>(space.getVms());
+
+        // Record which VM instances were part of the solution (and thus have
+        // the necessary instances already created
+        Collection<String> oldVms = new HashSet<>(space.getVms().keySet());
 
         // Add all hosts (new instances) to the facts
         for (Map.Entry<String, Host> h : hostMap.entrySet()) {
@@ -71,14 +75,34 @@ public class ClusterFactChange implements ProblemFactChange {
             scoreDirector.afterProblemFactAdded(h.getValue());
         }
 
-        // Add all VMs (new instances) to the facts
-        for (Map.Entry<String, VM> h : vmMap.entrySet()) {
-            scoreDirector.beforeProblemFactAdded(h.getValue());
-            space.getVms().add(h.getValue());
-            scoreDirector.afterProblemFactAdded(h.getValue());
+        // Remove old VM data
+        for (Iterator<String> it = space.getVms().keySet().iterator(); it.hasNext(); ) {
+            String vmId = it.next();
+            VM vm = space.getVms().get(vmId);
+            scoreDirector.beforeProblemFactRemoved(vm);
+            it.remove();
+            scoreDirector.afterProblemFactRemoved(vm);
         }
 
-        // Update the solution with new host and vm data
+        // Add new VM data
+        for (Map.Entry<String, VM> h : vmMap.entrySet()) {
+            scoreDirector.beforeProblemFactAdded(h.getValue());
+            space.getVms().put(h.getKey(), h.getValue());
+            scoreDirector.afterProblemFactAdded(h.getValue());
+
+            // New VM
+            if (!oldVms.contains(h.getKey())) {
+                Instance newInstance = new Instance(h.getKey());
+
+                // TODO add more instances for HA reservation case
+
+                scoreDirector.beforeProblemFactAdded(newInstance);
+                space.getInstances().add(newInstance);
+                scoreDirector.afterProblemFactAdded(newInstance);
+            }
+        }
+
+        // Update the migration steps with new host and vm data
         for (Migration step: space.getSteps()) {
             // Remove missing hosts from the migrations
             if (step.getDestination() == null) {
@@ -96,31 +120,43 @@ public class ClusterFactChange implements ProblemFactChange {
             }
 
             // Remove missing VMs from the migrations
-            if (step.getVm() == null) {
+            if (step.getInstance() == null) {
                 // nothing needed
-            } else if (!vmMap.containsKey(step.getVm().getId())) {
+            } else if (!vmMap.containsKey(step.getInstance().getVmId())) {
+                // vm removed
                 scoreDirector.beforeVariableChanged(step, "vm");
-                step.setVm(null);
+                step.setInstance(null);
                 scoreDirector.afterVariableChanged(step, "vm");
 
-                // and update the solution with new instances of VMs
             } else {
-                scoreDirector.beforeVariableChanged(step, "vm");
-                step.setVm(vmMap.get(step.getVm().getId()));
-                scoreDirector.afterVariableChanged(step, "vm");
+                // vm still present, nothing needed
             }
         }
 
-        // Delete old hosts and vms from the facts
+        // Delete old hosts from the facts
         for (Host h : oldHosts) {
             scoreDirector.beforeProblemFactRemoved(h);
             space.getHosts().remove(h);
             scoreDirector.afterProblemFactRemoved(h);
         }
-        for (VM vm : oldVMs) {
-            scoreDirector.beforeProblemFactRemoved(vm);
-            space.getVms().remove(vm);
-            scoreDirector.afterProblemFactRemoved(vm);
+
+        // Delete old Instances from the facts
+        for (Iterator<Instance> it = space.getInstances().iterator(); it.hasNext(); ) {
+            Instance instance = it.next();
+
+            if (space.getVms().containsKey(instance.getVmId())
+                    && instance.getPrimary()) {
+                // Always keep primary instance
+                continue;
+            } else if (space.getVms().containsKey(instance.getVmId())) {
+                // TODO handle secondary instance removal when the HA flag is removed
+                // and the instance has to be removed from Migrations too!
+                continue;
+            }
+
+            scoreDirector.beforeProblemFactRemoved(instance);
+            it.remove();
+            scoreDirector.afterProblemFactRemoved(instance);
         }
 
         // Remove old helper facts (Networks, PolicyUnits and other data)
@@ -155,16 +191,16 @@ public class ClusterFactChange implements ProblemFactChange {
         ClusterSituation situation = space;
         for (Migration m: space.getSteps()) {
             log.trace("Recomputing shadow variables in {} ({})", m.toString(), m.getStepsToFinish());
-            scoreDirector.beforeVariableChanged(m, "vmToHostAssignments");
-            scoreDirector.beforeVariableChanged(m, "hostToVmAssignments");
+            scoreDirector.beforeVariableChanged(m, "instanceToHostAssignments");
+            scoreDirector.beforeVariableChanged(m, "hostToInstanceAssignments");
             scoreDirector.beforeVariableChanged(m, "start");
             scoreDirector.beforeVariableChanged(m, "valid");
 
             m.recomputeSituationAfter(situation);
             situation = m;
 
-            scoreDirector.afterVariableChanged(m, "vmToHostAssignments");
-            scoreDirector.afterVariableChanged(m, "hostToVmAssignments");
+            scoreDirector.afterVariableChanged(m, "instanceToHostAssignments");
+            scoreDirector.afterVariableChanged(m, "hostToInstanceAssignments");
             scoreDirector.afterVariableChanged(m, "start");
             scoreDirector.afterVariableChanged(m, "valid");
         }

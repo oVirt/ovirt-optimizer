@@ -7,9 +7,11 @@ import org.ovirt.engine.sdk.entities.Cluster;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.MemoryPolicy;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.solver.facts.Instance;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 
@@ -25,9 +27,10 @@ public class TestDroolsJITCrash  {
         // Create new solution space
         OptimalDistributionStepsSolution bestSolution = new OptimalDistributionStepsSolution();
         bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setVms(new HashSet<VM>());
+        bestSolution.setInstances(new HashSet<Instance>());
         bestSolution.setOtherFacts(new HashSet<Object>());
         bestSolution.setFixedFacts(new HashSet<Object>());
+        bestSolution.setVms(new HashMap<String, VM>());
 
         // Create cluster
         Cluster c = new Cluster();
@@ -54,7 +57,8 @@ public class TestDroolsJITCrash  {
 
         // Add facts
         bestSolution.getHosts().add(h);
-        bestSolution.getVms().add(vm);
+        bestSolution.getInstances().add(new Instance(vm.getId()));
+        bestSolution.getVms().put(vm.getId(), vm);
 
         // Prepare the step placeholders
         ClusterSituation last = bestSolution;

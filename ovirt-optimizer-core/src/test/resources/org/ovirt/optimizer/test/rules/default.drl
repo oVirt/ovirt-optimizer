@@ -2,6 +2,7 @@ package org.ovirt.optimizer.solver;
 dialect  "java"
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScoreHolder;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
@@ -14,12 +15,13 @@ global HardSoftScoreHolder scoreHolder;
 // memory for all the VMs
 rule "notEnoughGuaranteedMemory"
     when
-        $step: Migration(destination != null, vm != null)
+        $step: Migration(destination != null, instance != null)
         $host: Host($memory: memory)
         $requiredMemoryTotal : Number(intValue > $memory) from accumulate(
-                $vm : VM($vmId : id,
-                         $step.getAssignment($vmId) == $host.id,
-                         $requiredMemory : memoryPolicy.guaranteed),
+                $inst: Instance($vmId : vmId, $instId : id, primary == true,
+                                $step.getAssignment($instId) == $host.id) and
+                $vm : VM(id == $vmId,
+                         $requiredMemory : memoryPolicy.guaranteed + 65),
                 sum($requiredMemory)
         )
     then

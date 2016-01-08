@@ -4,7 +4,7 @@ import org.optaplanner.core.api.domain.entity.PlanningEntity;
 import org.optaplanner.core.api.domain.variable.CustomShadowVariable;
 import org.optaplanner.core.api.domain.variable.PlanningVariable;
 import org.ovirt.engine.sdk.entities.Host;
-import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.solver.facts.Instance;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -14,34 +14,34 @@ import java.util.Set;
 @PlanningEntity
 public class Migration implements ClusterSituation {
     /* planning variables */
-    VM vm;
+    Instance instance;
     Host destination;
 
     /* steps to finish (0 means final state) */
     int stepsToFinish;
 
     /* shadow variables */
-    Map<String, String> vmToHostAssignments;
-    Map<String, Set<String>> hostToVmAssignments;
+    Map<Long, String> instanceToHostAssignments;
+    Map<String, Set<Long>> hostToInstanceAssignments;
     boolean start;
     boolean valid;
 
     public Migration() {
-        vmToHostAssignments = new HashMap<>();
-        hostToVmAssignments = new HashMap<>();
+        instanceToHostAssignments = new HashMap<>();
+        hostToInstanceAssignments = new HashMap<>();
     }
 
-    public Migration(VM vm, Host destination) {
+    public Migration(Instance instance, Host destination) {
         this();
-        this.vm = vm;
+        this.instance = instance;
         this.destination = destination;
     }
 
-    public void setVm(VM vm) {
-        this.vm = vm;
+    public void setInstance(Instance instance) {
+        this.instance = instance;
     }
 
-    @PlanningVariable(valueRangeProviderRefs = {"hosts"}, nullable = true)
+    @PlanningVariable(valueRangeProviderRefs = { "hosts" }, nullable = true)
     public Host getDestination() {
         return destination;
     }
@@ -54,12 +54,12 @@ public class Migration implements ClusterSituation {
         return stepsToFinish == 0;
     }
 
-    public void setVmToHostAssignments(Map<String, String> vmToHostAssignments) {
-        this.vmToHostAssignments = vmToHostAssignments;
+    public void setInstanceToHostAssignments(Map<Long, String> instanceToHostAssignments) {
+        this.instanceToHostAssignments = instanceToHostAssignments;
     }
 
-    public String getAssignment(String vm) {
-        return vmToHostAssignments.get(vm);
+    public String getAssignment(Long instanceId) {
+        return instanceToHostAssignments.get(instanceId);
     }
 
     /**
@@ -67,63 +67,71 @@ public class Migration implements ClusterSituation {
      * of this and all previous steps.
      */
     public void recomputeSituationAfter(ClusterSituation previous) {
-        vmToHostAssignments = new HashMap<>(previous.getVmToHostAssignments());
-        hostToVmAssignments = new HashMap<>();
+        instanceToHostAssignments = new HashMap<>(previous.getInstanceToHostAssignments());
+        hostToInstanceAssignments = new HashMap<>();
 
-        for (Map.Entry<String, Set<String>> item: previous.getHostToVmAssignments().entrySet()) {
-            hostToVmAssignments.put(item.getKey(), new HashSet<String>(item.getValue()));
+        for (Map.Entry<String, Set<Long>> item : previous.getHostToInstanceAssignments().entrySet()) {
+            hostToInstanceAssignments.put(item.getKey(), new HashSet<>(item.getValue()));
         }
 
-        if (vm == null || destination == null) {
+        if (instance == null
+                || (destination == null && instance.getPrimary())) {
             // Incomplete data set, no migration is performed
             valid = false;
             return;
         }
 
-        String source = vmToHostAssignments.get(vm.getId());
+        String source = instanceToHostAssignments.get(instance.getId());
         if (source != null) {
-            hostToVmAssignments.get(source).remove(vm.getId());
+            hostToInstanceAssignments.get(source).remove(instance.getId());
         }
 
-        Set<String> hostSet = hostToVmAssignments.get(destination.getId());
-        if (hostSet == null) {
-            hostSet = new HashSet<>();
-            hostToVmAssignments.put(destination.getId(), hostSet);
+        if (destination != null) {
+            Set<Long> hostSet = hostToInstanceAssignments.get(destination.getId());
+            if (hostSet == null) {
+                hostSet = new HashSet<>();
+                hostToInstanceAssignments.put(destination.getId(), hostSet);
+            }
+            hostSet.add(instance.getId());
         }
-        hostSet.add(vm.getId());
 
 		/* Check whether the VM is newly started by this step -
            or in other words: if it was not assigned in the previous step
 		 */
-        start = (vmToHostAssignments.get(vm.getId()) == null);
+        start = (instanceToHostAssignments.get(instance.getId()) == null);
 
 		/* Check whether a migration is performed here. We can ignore this step
-		   if the VM was already running on the destination host
+           if the VM was already running on the destination host.
+
+           The migration is also valid when a secondary instance is removed from
+           hosts.
 		 */
-        String oldHost = vmToHostAssignments.get(vm.getId());
-        valid = oldHost == null || !oldHost.equals(destination.getId());
+        String oldHost = instanceToHostAssignments.get(instance.getId());
+        valid = (oldHost == null && destination != null)
+                || (oldHost != null && destination == null && !instance.getPrimary())
+                || (oldHost != null && destination != null && !oldHost.equals(destination.getId()));
 
-        vmToHostAssignments.put(vm.getId(), destination.getId());
+        instanceToHostAssignments.put(instance.getId(), destination != null ? destination.getId() : null);
     }
 
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
-            sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                    @CustomShadowVariable.Source(variableName = "vm")})
+            sources = { @CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "instance") })
     @Override
-    public Map<String, String> getVmToHostAssignments() {
-        return vmToHostAssignments;
+    public Map<Long, String> getInstanceToHostAssignments() {
+        return instanceToHostAssignments;
     }
 
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
-            sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                    @CustomShadowVariable.Source(variableName = "vm")})
+            sources = { @CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "instance") })
     @Override
-    public Map<String, Set<String>> getHostToVmAssignments() {
-        return hostToVmAssignments;
+    public Map<String, Set<Long>> getHostToInstanceAssignments() {
+        return hostToInstanceAssignments;
     }
 
-    public void setHostToVmAssignments(Map<String, Set<String>> hostToVmAssignments) {
-        this.hostToVmAssignments = hostToVmAssignments;
+    public void setHostToInstanceAssignments(Map<String, Set<Long>> hostToInstanceAssignments) {
+        this.hostToInstanceAssignments = hostToInstanceAssignments;
     }
 
     /**
@@ -131,8 +139,8 @@ public class Migration implements ClusterSituation {
      * precomputed using the recomputeSituationAfter hook.
      */
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
-            sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                    @CustomShadowVariable.Source(variableName = "vm")})
+            sources = { @CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "instance") })
     public boolean isStart() {
         return start;
     }
@@ -145,8 +153,8 @@ public class Migration implements ClusterSituation {
      * Check whether this migration is doing anything or represents an incomplete step.
      */
     @CustomShadowVariable(variableListenerClass = MigrationStepChangeListener.class,
-            sources = {@CustomShadowVariable.Source(variableName = "destination"),
-                    @CustomShadowVariable.Source(variableName = "vm")})
+            sources = { @CustomShadowVariable.Source(variableName = "destination"),
+                    @CustomShadowVariable.Source(variableName = "instance") })
     public boolean isValid() {
         return valid;
     }
@@ -155,9 +163,9 @@ public class Migration implements ClusterSituation {
         this.valid = isValid;
     }
 
-    @PlanningVariable(valueRangeProviderRefs = {"vms"}, nullable = true)
-    public VM getVm() {
-        return vm;
+    @PlanningVariable(valueRangeProviderRefs = { "instances" }, nullable = true)
+    public Instance getInstance() {
+        return instance;
     }
 
     public int getStepsToFinish() {

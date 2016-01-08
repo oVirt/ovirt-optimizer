@@ -4,6 +4,6 @@ import java.util.Map;
 import java.util.Set;
 
 public interface ClusterSituation {
-    Map<String, String> getVmToHostAssignments();
-    Map<String, Set<String>> getHostToVmAssignments();
+    Map<Long, String> getInstanceToHostAssignments();
+    Map<String, Set<Long>> getHostToInstanceAssignments();
 }

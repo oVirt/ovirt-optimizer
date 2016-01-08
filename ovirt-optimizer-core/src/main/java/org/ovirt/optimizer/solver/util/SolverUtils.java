@@ -10,6 +10,8 @@ import org.optaplanner.core.config.score.director.ScoreDirectorFactoryConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.rest.dto.Result;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.problemspace.ClusterSituation;
 import org.ovirt.optimizer.solver.problemspace.Migration;
@@ -58,7 +60,8 @@ public class SolverUtils {
             return scoreOnlySolver;
         }
 
-        SolverFactory solverFactory = SolverFactory.createFromXmlResource("org/ovirt/optimizer/solver/rules/scoreonly.xml");
+        SolverFactory solverFactory =
+                SolverFactory.createFromXmlResource("org/ovirt/optimizer/solver/rules/scoreonly.xml");
         addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(), customDrlFiles);
         scoreOnlySolver = solverFactory.buildSolver();
         recordedCustomDrlFiles = customDrlFiles;
@@ -66,69 +69,67 @@ public class SolverUtils {
     }
 
     public static HardSoftScore computeScore(OptimalDistributionStepsSolution sourceSolution,
-            List<Map<String, String>> migrationIds,
+            Result result,
             Set<String> runningIds,
             List<File> customDrlFiles) {
-        log.debug("Reevaluating solution {}", migrationIds);
+        log.debug("Reevaluating solution {}", result);
 
         Solver solver = getScoreOnlySolver(customDrlFiles);
+
+        // Get primary instances and VM -> ID map
+        Map<String, Long> vmToInst = new HashMap<>();
+        Set<Instance> primaryInstances = new HashSet<>();
+        for (Instance i : sourceSolution.getInstances()) {
+            if (!i.getPrimary()) {
+                continue;
+            }
+
+            vmToInst.put(i.getVmId(), i.getId());
+            primaryInstances.add(i);
+        }
 
         /* Reconstruct the Solution object with current facts */
         OptimalDistributionStepsSolution solution = new OptimalDistributionStepsSolution();
         solution.setHosts(sourceSolution.getHosts());
-        solution.setVms(sourceSolution.getVms());
+        solution.setInstances(primaryInstances);
         solution.setOtherFacts(sourceSolution.getOtherFacts());
         solution.setFixedFacts(sourceSolution.getFixedFacts());
+        solution.setVms(solution.getVms());
 
         /* Allow an expected VM start to be specified */
-        for (String id: runningIds) {
+        for (String id : runningIds) {
             solution.getOtherFacts().add(new RunningVm(id));
         }
 
         /* Get id to object mappings for hosts and VMs */
         Map<String, Host> hosts = new HashMap<>();
-        for (Host h: solution.getHosts()) {
+        for (Host h : solution.getHosts()) {
             hosts.put(h.getId(), h);
             log.debug("Found host {}", h.getId());
         }
 
-        Map<String, VM> vms = new HashMap<>();
-        for (VM vm: solution.getVms()) {
-            vms.put(vm.getId(), vm);
-            log.debug("Found VM {}", vm.getId());
+        Map<Long, Instance> instances = new HashMap<>();
+        for (Instance inst : solution.getInstances()) {
+            instances.put(inst.getId(), inst);
+            log.debug("Found instance {} for VM {}", inst.getId(), inst.getVmId());
         }
 
-        /* Recreate the migration objects */
-        List<Migration> migrations = new ArrayList<>();
-        for (Map<String, String> migrationStep: migrationIds) {
-            for (Map.Entry<String, String> singleMigration: migrationStep.entrySet()) {
-                // Create new migration step
-                Migration migration = new Migration();
-                String hostId = singleMigration.getValue();
-
-                // Inject current host data
-                if (hosts.containsKey(hostId)) {
-                    migration.setDestination(hosts.get(hostId));
-                    log.debug("Setting destination for {} to {}", migration, hostId);
-                }
-                else {
-                    log.debug("Host {} is no longer valid", hostId);
-                }
-
-                // Inject current VM data
-                String vmId = singleMigration.getKey();
-                if (vms.containsKey(vmId)) {
-                    migration.setVm(vms.get(vmId));
-                    log.debug("Setting VM for {} to {}", migration, vmId);
-                }
-                else {
-                    log.debug("VM {} is no longer valid", vmId);
-                }
-
-                // Add the step to the list of steps
-                migrations.add(migration);
+        /* Recreate secondary instances */
+        Map<Long, Long> old2New = new HashMap<>();
+        for (Map.Entry<Long, String> inst: result.getBackups().entrySet()) {
+            if (!vmToInst.containsKey(inst.getValue())) {
+                continue;
             }
+
+            Instance newInst = new Instance(inst.getValue());
+            newInst.setPrimary(false);
+
+            old2New.put(inst.getKey(), newInst.getId());
+            instances.put(newInst.getId(), newInst);
         }
+
+        /* Recreate the migration objects from real and secondary instances */
+        List<Migration> migrations = recreateMigrations(result, hosts, instances, vmToInst, old2New);
 
         // It is necessary to have at least one migration object to make
         // the rules work. It does not have to describe any valid action,
@@ -144,7 +145,7 @@ public class SolverUtils {
         /* Prepare shadow variables */
         ClusterSituation previous = solution;
 
-        for (Migration m: migrations) {
+        for (Migration m : migrations) {
             m.recomputeSituationAfter(previous);
             previous = m;
         }
@@ -159,9 +160,78 @@ public class SolverUtils {
         return solution.getScore();
     }
 
+    private static List<Migration> recreateMigrations(Result result,
+            Map<String, Host> hosts,
+            Map<Long, Instance> instances, Map<String, Long> vmToInst, Map<Long, Long> old2New) {
+        List<Migration> migrations = new ArrayList<>();
+        List<List<Map<Long, String>>> backupReorgs = new ArrayList<>(result.getBackupReorg());
+
+        for (Map<String, String> migrationStep : result.getMigrations()) {
+            popAndInsertBackupSpaceMigrations(hosts, instances, old2New, migrations, backupReorgs);
+
+            for (Map.Entry<String, String> singleMigration : migrationStep.entrySet()) {
+                // Create new migration step
+                Migration migration = new Migration();
+                String hostId = singleMigration.getValue();
+
+                // Inject current host data
+                if (hosts.containsKey(hostId)) {
+                    migration.setDestination(hosts.get(hostId));
+                    log.debug("Setting destination for {} to {}", migration, hostId);
+                } else {
+                    log.debug("Host {} is no longer valid", hostId);
+                }
+
+                // Inject current VM data
+                String vmId = singleMigration.getKey();
+                if (vmToInst.containsKey(vmId) && instances.containsKey(vmToInst.get(vmId))) {
+                    Long instId = vmToInst.get(vmId);
+                    migration.setInstance(instances.get(instId));
+                    log.debug("Setting VM for {} to {}", migration, vmId);
+                } else {
+                    log.debug("VM {} is no longer valid", vmId);
+                }
+
+                // Add the step to the list of steps
+                migrations.add(migration);
+            }
+        }
+
+        popAndInsertBackupSpaceMigrations(hosts, instances, old2New, migrations, backupReorgs);
+        return migrations;
+    }
+
+    private static void popAndInsertBackupSpaceMigrations(Map<String, Host> hosts,
+            Map<Long, Instance> instances,
+            Map<Long, Long> old2New, List<Migration> migrations, List<List<Map<Long, String>>> backupReorgs) {
+
+        // Do nothing when there is less backup space migrations steps than needed
+        if (backupReorgs.isEmpty()) {
+            return;
+        }
+
+        List<Map<Long, String>> reorgStep = backupReorgs.get(0);
+        backupReorgs.remove(0);
+
+        for (Map<Long, String> backupMigrations: reorgStep) {
+            for (Map.Entry<Long, String> singleBackupMigration: backupMigrations.entrySet()) {
+                if (!hosts.containsKey(singleBackupMigration.getValue())) {
+                    continue;
+                }
+
+                Migration migration = new Migration();
+                migration.setDestination(hosts.get(singleBackupMigration.getValue()));
+                Long oldInstanceId = singleBackupMigration.getKey();
+                migration.setInstance(instances.get(old2New.getOrDefault(oldInstanceId, oldInstanceId)));
+                migrations.add(migration);
+            }
+        }
+    }
+
     /**
      * Recompute solution's score and log all rules that affected it (in debug mode)
      * This method uses new score director from the passed solver
+     *
      * @param solver
      * @param solution
      */
@@ -177,7 +247,7 @@ public class SolverUtils {
                 List<Object> justificationList = constraintMatch.getJustificationList();
                 Number weight = constraintMatch.getWeightAsNumber();
                 log.debug("Constraint match {} with weight {}", constraintMatch, weight);
-                for (Object item: justificationList) {
+                for (Object item : justificationList) {
                     log.debug("Justified by {}", item);
                 }
             }

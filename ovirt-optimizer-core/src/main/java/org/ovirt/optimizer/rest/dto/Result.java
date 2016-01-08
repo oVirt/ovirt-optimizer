@@ -14,6 +14,22 @@ public class Result implements Serializable {
     Map<String, Set<String>> hostToVms;
     Map<String, String> vmToHost;
     Map<String, String> currentVmToHost;
+
+    /**
+     * Backup migrations related to migration steps
+     * Index 0 is the preparation before first real migration
+     * each other index is the backup space reorg after that migration
+     *
+     * Each result should have exactly n + 1 elements in backupReorg where
+     * n is the size of migrations.
+     */
+    List<List<Map<Long, String>>> backupReorg = new ArrayList<>();
+
+    /**
+     * Mapping between backup slot ID and the associated VM
+     */
+    Map<Long, String> backups = new HashMap<>();
+
     List<Map<String, String>> migrations;
     Set<String> hosts;
     Set<String> vms;
@@ -140,5 +156,21 @@ public class Result implements Serializable {
 
     public void setAge(long age) {
         this.age = age;
+    }
+
+    public List<List<Map<Long, String>>> getBackupReorg() {
+        return backupReorg;
+    }
+
+    public void setBackupReorg(List<List<Map<Long, String>>> backupReorg) {
+        this.backupReorg = backupReorg;
+    }
+
+    public Map<Long, String> getBackups() {
+        return backups;
+    }
+
+    public void setBackups(Map<Long, String> backups) {
+        this.backups = backups;
     }
 }

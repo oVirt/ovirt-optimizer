@@ -34,7 +34,7 @@
         <unionMoveSelector>
             <changeMoveSelector>
                 <valueSelector>
-                    <variableName>vm</variableName>
+                    <variableName>instance</variableName>
                 </valueSelector>
             </changeMoveSelector>
             <changeMoveSelector>
@@ -49,7 +49,7 @@
                         <entityClass>org.ovirt.optimizer.solver.problemspace.Migration</entityClass>
                     </entitySelector>
                     <valueSelector>
-                        <variableName>vm</variableName>
+                        <variableName>instance</variableName>
                     </valueSelector>
                 </changeMoveSelector>
                 <changeMoveSelector>

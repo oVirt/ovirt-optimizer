@@ -3,6 +3,8 @@ package org.ovirt.optimizer.solver.problemspace;
 import org.junit.Test;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.cdi.LoggerFactory;
+import org.ovirt.optimizer.solver.facts.Instance;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -17,12 +19,12 @@ public class MigrationTest {
         ClusterSituation start = prepareDummyCluster();
         Migration m1 = new Migration();
         m1.recomputeSituationAfter(start);
-        assertEquals("host1", m1.getAssignment("vm1"));
-        assertEquals("host2", m1.getAssignment("vm2"));
-        assertEquals("host1", m1.getAssignment("vm3"));
-        assertEquals("host2", m1.getAssignment("vm4"));
-        assertEquals(2, m1.getHostToVmAssignments().get("host1").size());
-        assertEquals(2, m1.getHostToVmAssignments().get("host2").size());
+        assertEquals("host1", m1.getAssignment(1L));
+        assertEquals("host2", m1.getAssignment(2L));
+        assertEquals("host1", m1.getAssignment(3L));
+        assertEquals("host2", m1.getAssignment(4L));
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host1").size());
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host2").size());
     }
 
     @Test
@@ -33,19 +35,18 @@ public class MigrationTest {
         Host h1 = new Host();
         h1.setId("host1");
 
-        VM vm1 = new VM();
-        vm1.setId("vm1");
-        vm1.setHost(h1);
+        Instance vm1 = new Instance("vm-1");
+        vm1.setId(1L);
 
-        m1.setVm(vm1);
+        m1.setInstance(vm1);
         m1.recomputeSituationAfter(start);
-        assertEquals("host1", m1.getAssignment("vm1"));
-        assertEquals("host2", m1.getAssignment("vm2"));
-        assertEquals("host1", m1.getAssignment("vm3"));
-        assertEquals("host2", m1.getAssignment("vm4"));
-        assertEquals(false, m1.getHostToVmAssignments().containsKey(null));
-        assertEquals(2, m1.getHostToVmAssignments().get("host1").size());
-        assertEquals(2, m1.getHostToVmAssignments().get("host2").size());
+        assertEquals("host1", m1.getAssignment(1L));
+        assertEquals("host2", m1.getAssignment(2L));
+        assertEquals("host1", m1.getAssignment(3L));
+        assertEquals("host2", m1.getAssignment(4L));
+        assertEquals(false, m1.getHostToInstanceAssignments().containsKey(null));
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host1").size());
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host2").size());
     }
 
     @Test
@@ -58,13 +59,13 @@ public class MigrationTest {
 
         m1.setDestination(h2);
         m1.recomputeSituationAfter(start);
-        assertEquals("host1", m1.getAssignment("vm1"));
-        assertEquals("host2", m1.getAssignment("vm2"));
-        assertEquals("host1", m1.getAssignment("vm3"));
-        assertEquals("host2", m1.getAssignment("vm4"));
-        assertEquals(false, m1.getVmToHostAssignments().containsKey(null));
-        assertEquals(2, m1.getHostToVmAssignments().get("host1").size());
-        assertEquals(2, m1.getHostToVmAssignments().get("host2").size());
+        assertEquals("host1", m1.getAssignment(1L));
+        assertEquals("host2", m1.getAssignment(2L));
+        assertEquals("host1", m1.getAssignment(3L));
+        assertEquals("host2", m1.getAssignment(4L));
+        assertEquals(false, m1.getInstanceToHostAssignments().containsKey(null));
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host1").size());
+        assertEquals(2, m1.getHostToInstanceAssignments().get("host2").size());
     }
 
     @Test
@@ -78,41 +79,40 @@ public class MigrationTest {
         Host h2 = new Host();
         h2.setId("host2");
 
-        VM vm1 = new VM();
-        vm1.setId("vm1");
-        vm1.setHost(h1);
+        Instance vm1 = new Instance("vm-1");
+        vm1.setId(1L);
 
-        m1.setVm(vm1);
+        m1.setInstance(vm1);
         m1.setDestination(h2);
         m1.recomputeSituationAfter(start);
 
-        assertEquals("host2", m1.getAssignment("vm1"));
-        assertEquals("host2", m1.getAssignment("vm2"));
-        assertEquals("host1", m1.getAssignment("vm3"));
-        assertEquals("host2", m1.getAssignment("vm4"));
-        assertEquals(1, m1.getHostToVmAssignments().get("host1").size());
-        assertEquals(3, m1.getHostToVmAssignments().get("host2").size());
+        assertEquals("host2", m1.getAssignment(1L));
+        assertEquals("host2", m1.getAssignment(2L));
+        assertEquals("host1", m1.getAssignment(3L));
+        assertEquals("host2", m1.getAssignment(4L));
+        assertEquals(1, m1.getHostToInstanceAssignments().get("host1").size());
+        assertEquals(3, m1.getHostToInstanceAssignments().get("host2").size());
     }
 
     private ClusterSituation prepareDummyCluster() {
         return new ClusterSituation() {
             @Override
-            public Map<String, String> getVmToHostAssignments() {
-                Map<String, String> s = new HashMap<String, String>();
-                s.put("vm1", "host1");
-                s.put("vm2", "host2");
-                s.put("vm3", "host1");
-                s.put("vm4", "host2");
+            public Map<Long, String> getInstanceToHostAssignments() {
+                Map<Long, String> s = new HashMap<Long, String>();
+                s.put(1L, "host1");
+                s.put(2L, "host2");
+                s.put(3L, "host1");
+                s.put(4L, "host2");
                 return s;
             }
 
             @Override
-            public Map<String, Set<String>> getHostToVmAssignments() {
-                Map<String, Set<String>> s = new HashMap<>();
-                s.put("host1", new HashSet<String>());
-                s.put("host2", new HashSet<String>());
+            public Map<String, Set<Long>> getHostToInstanceAssignments() {
+                Map<String, Set<Long>> s = new HashMap<>();
+                s.put("host1", new HashSet<Long>());
+                s.put("host2", new HashSet<Long>());
 
-                for (Map.Entry<String, String> item: getVmToHostAssignments().entrySet()) {
+                for (Map.Entry<Long, String> item: getInstanceToHostAssignments().entrySet()) {
                     s.get(item.getValue()).add(item.getKey());
                 }
 

@@ -11,6 +11,7 @@ import org.ovirt.optimizer.rest.dto.DebugSnapshot;
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.rest.dto.ScoreResult;
 import org.ovirt.optimizer.scheduling.QuartzService;
+import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.jobs.ClusterDiscoveryTrigger;
 import org.ovirt.optimizer.solver.problemspace.Migration;
@@ -33,7 +34,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-
 
 /**
  * This is the main service class for computing the optimized
@@ -69,13 +69,14 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public void create() {
         log.info("oVirt optimizer service starting");
         threads = new HashSet<>();
-        int refresh = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
+        int refresh =
+                Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
         discoveryTimer = scheduler.createTimer(refresh, ClusterDiscoveryTrigger.class);
     }
 
     // Synchronized should not be needed, but is here as a
     // safeguard for prevention from threading mistakes
-    public synchronized void discoveryTimeout(final JobDetail timer){
+    public synchronized void discoveryTimeout(final JobDetail timer) {
         // Check for possible spurious timeouts from old instances
         if (timer.getKey() != discoveryTimer.getJobDetail().getKey()) {
             log.warn(String.format("Unknown timeout from %s", timer.toString()));
@@ -103,15 +104,19 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         Properties config = new ConfigProvider().load().getConfig();
         final int maxSteps = Integer.parseInt(config.getProperty(ConfigProvider.SOLVER_STEPS));
 
-        for (String clusterId: availableClusters) {
+        for (String clusterId : availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
 
-            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client, configProvider, clusterId, maxSteps, new ClusterOptimizer.Finished() {
-                @Override
-                public void solvingFinished(ClusterOptimizer planner, Thread thread) {
-                    threads.remove(thread);
-                }
-            });
+            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client,
+                    configProvider,
+                    clusterId,
+                    maxSteps,
+                    new ClusterOptimizer.Finished() {
+                        @Override
+                        public void solvingFinished(ClusterOptimizer planner, Thread thread) {
+                            threads.remove(thread);
+                        }
+                    });
 
             Thread updater = new Thread(planner.getUpdaterInstance());
             Thread solver = new Thread(planner);
@@ -128,7 +133,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         }
 
         synchronized (clusterOptimizers) {
-            for (String clusterId: missingClusters) {
+            for (String clusterId : missingClusters) {
                 clusterOptimizers.get(clusterId).terminate();
                 clusterOptimizers.get(clusterId).getUpdaterInstance().terminate();
                 log.info(String.format("Cluster %s was removed", clusterId));
@@ -142,7 +147,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         discoveryTimer.cancel();
 
         synchronized (clusterOptimizers) {
-            for (ClusterOptimizer clusterOptimizer: clusterOptimizers.values()) {
+            for (ClusterOptimizer clusterOptimizer : clusterOptimizers.values()) {
                 clusterOptimizer.getUpdaterInstance().terminate();
                 clusterOptimizer.terminate();
             }
@@ -151,7 +156,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         log.debug("Waiting for threads to finish");
         // Iterate over copy of the set as the ending threads will
         // be removed by callback
-        for (Thread thread: new ArrayList<>(threads)) {
+        for (Thread thread : new ArrayList<>(threads)) {
             try {
                 thread.join();
             } catch (InterruptedException ex) {
@@ -217,7 +222,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         }
 
         ScoreResult scoreResult = new ScoreResult();
-        HardSoftScore score = clusterOptimizer.computeScore(oldResult.getMigrations());
+        HardSoftScore score = clusterOptimizer.computeScore(oldResult);
         scoreResult.setHardScore(score.getHardScore());
         scoreResult.setSoftScore(score.getSoftScore());
         return scoreResult;
@@ -235,8 +240,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
             r = Result.createEmpty(cluster);
-        }
-        else {
+        } else {
             r = getCurrentResult(clusterOptimizer);
         }
 
@@ -245,52 +249,110 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
     private Result getCurrentResult(ClusterOptimizer clusterOptimizer) {
         OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
+        String clusterId = clusterOptimizer.getClusterId();
 
-        Result r = new Result(clusterOptimizer.getClusterId());
+        Result r = solutionToResult(clusterId, best);
+        return r;
+    }
+
+    private Result solutionToResult(String clusterId, OptimalDistributionStepsSolution solution) {
+        Result r = new Result(clusterId);
         r.setStatus(Result.ResultStatus.OK);
-        r.setHardScore(best.getScore().getHardScore());
-        r.setSoftScore(best.getScore().getSoftScore());
+        r.setHardScore(solution.getScore().getHardScore());
+        r.setSoftScore(solution.getScore().getSoftScore());
 
         r.setHosts(new HashSet<String>());
-        for (Host h: best.getHosts()) {
+        for (Host h : solution.getHosts()) {
             r.getHosts().add(h.getId());
         }
 
         r.setVms(new HashSet<String>());
-        for (VM vm: best.getVms()) {
+        for (VM vm : solution.getVms().values()) {
             r.getVms().add(vm.getId());
         }
 
         r.setRequestedVms(new HashSet<String>());
-        for (Object fact: best.getFixedFacts()) {
+        for (Object fact : solution.getFixedFacts()) {
             if (fact instanceof RunningVm) {
-                r.getRequestedVms().add(((RunningVm)fact).getId());
+                r.getRequestedVms().add(((RunningVm) fact).getId());
             }
         }
 
-        r.setHostToVms(best.getFinalSituation().getHostToVmAssignments());
-        r.setVmToHost(best.getFinalSituation().getVmToHostAssignments());
-        r.setCurrentVmToHost(best.getVmToHostAssignments());
+        Map<Long, Instance> instances = new HashMap<>();
+        for (Instance i : solution.getInstances()) {
+            instances.put(i.getId(), i);
+        }
+
+        // Preprocess the situations and remove all secondary allocations
+        r.setHostToVms(hostToInstancesToVms(solution.getFinalSituation().getHostToInstanceAssignments(), instances));
+        r.setVmToHost(instanceToHostToVm(solution.getFinalSituation().getInstanceToHostAssignments(), instances));
+        r.setCurrentVmToHost(instanceToHostToVm(solution.getInstanceToHostAssignments(), instances));
+
+        r.setBackupReorg(new ArrayList<List<Map<Long, String>>>());
+        r.setBackups(new HashMap<Long, String>());
+
+        // The current backup step to accumulated backup migrations
+        List<Map<Long, String>> backupStep = new ArrayList<>();
 
         List<Map<String, String>> migrations = new ArrayList<>();
-        for (Migration step: best.getSteps()) {
+        for (Migration step : solution.getSteps()) {
             if (!step.isValid()) {
                 continue;
             }
-            Map<String, String> migration = new HashMap<>();
-            migration.put(step.getVm().getId(), step.getDestination().getId());
-            migrations.add(migration);
+
+            if (step.getInstance().getPrimary()) {
+                Map<String, String> migration = new HashMap<>();
+                migration.put(step.getInstance().getVmId(), step.getDestination().getId());
+                migrations.add(migration);
+
+                r.getBackupReorg().add(backupStep);
+                backupStep = new ArrayList<>();
+            } else {
+                Map<Long, String> migration = new HashMap<>();
+                migration.put(step.getInstance().getId(), step.getDestination().getId());
+                backupStep.add(migration);
+                r.getBackups().put(step.getInstance().getId(), step.getInstance().getVmId());
+            }
         }
+
+        // Tailing backup space reorg
+        r.getBackupReorg().add(backupStep);
+
         r.setMigrations(migrations);
 
         long time = System.currentTimeMillis();
-        r.setAge(time - best.getTimestamp());
+        r.setAge(time - solution.getTimestamp());
         return r;
+    }
+
+    private Map<String, Set<String>> hostToInstancesToVms(Map<String, Set<Long>> h2i, Map<Long, Instance> instances) {
+        Map<String, Set<String>> h2vm = new HashMap<>();
+        for (Map.Entry<String, Set<Long>> hostMap: h2i.entrySet()) {
+            h2vm.put(hostMap.getKey(), new HashSet<String>());
+            for (Long instId: hostMap.getValue()) {
+                Instance inst = instances.get(instId);
+                if (inst.getPrimary()) {
+                    h2vm.get(hostMap.getKey()).add(inst.getVmId());
+                }
+            }
+        }
+        return h2vm;
+    }
+
+    private Map<String, String> instanceToHostToVm(Map<Long, String> i2hs, Map<Long, Instance> instances) {
+        Map<String, String> vm2h = new HashMap<>();
+        for (Map.Entry<Long, String> i2h: i2hs.entrySet()) {
+            Instance inst = instances.get(i2h.getKey());
+            if (inst.getPrimary()) {
+                vm2h.put(inst.getVmId(), i2h.getValue());
+            }
+        }
+        return vm2h;
     }
 
     @Override
     public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
-        HardSoftScore score = SolverUtils.computeScore(situation, result.getMigrations(),
+        HardSoftScore score = SolverUtils.computeScore(situation, result,
                 Collections.<String>emptySet(),
                 configProvider.customRuleFiles());
 
@@ -302,7 +364,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
     @Override
     public Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation,
-            List<Map<String, String>> preSteps, String vmId) {
+            Result baseResult, String vmId) {
         Map<String, ScoreResult> results = new HashMap<>();
         Map<String, String> migration = new HashMap<>();
         List<Map<String, String>> migrations = new ArrayList<>();
@@ -323,12 +385,18 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         Set<String> vmStarts = new HashSet<>();
         vmStarts.add(vmId);
 
-        if (preSteps != null) {
-            // Use provided migration steps first when available
-            migrations.addAll(preSteps);
+        Result dummyResult = new Result();
 
-            // Mark all preStep VMs as running
-            for (Map<String, String> step: preSteps) {
+        if (baseResult != null) {
+            // Use provided migration steps first when available
+            migrations.addAll(baseResult.getMigrations());
+
+            // Copy the backup space migrations
+            dummyResult.setBackups(baseResult.getBackups());
+            dummyResult.setBackupReorg(baseResult.getBackupReorg());
+
+            // Mark all migrated base result VMs as running
+            for (Map<String, String> step : migrations) {
                 vmStarts.addAll(step.keySet());
             }
         }
@@ -336,12 +404,14 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         // Add the scheduling step migration
         migrations.add(migration);
 
+        dummyResult.setMigrations(migrations);
+
         // Compute the score for each possible destination
-        for (Host host: situation.getHosts()) {
+        for (Host host : situation.getHosts()) {
             migration.clear();
             migration.put(vmId, host.getId());
 
-            HardSoftScore score = SolverUtils.computeScore(situation, migrations,
+            HardSoftScore score = SolverUtils.computeScore(situation, dummyResult,
                     vmStarts,
                     configProvider.customRuleFiles());
             ScoreResult scoreResult = new ScoreResult();
@@ -358,7 +428,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         Map<String, DebugSnapshot> snaps = new HashMap<>();
 
         synchronized (clusterOptimizers) {
-            for (ClusterOptimizer optimizer: clusterOptimizers.values()) {
+            for (ClusterOptimizer optimizer : clusterOptimizers.values()) {
                 DebugSnapshot snap = new DebugSnapshot();
                 snap.setCluster(optimizer.getClusterId());
                 snap.setState(optimizer.getBestSolution());
