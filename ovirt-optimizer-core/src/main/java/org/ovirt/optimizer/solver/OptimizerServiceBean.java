@@ -432,7 +432,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
                 DebugSnapshot snap = new DebugSnapshot();
                 snap.setCluster(optimizer.getClusterId());
                 snap.setState(optimizer.getBestSolution());
-                snap.setResult(getCurrentResult(optimizer));
+                snap.setResult(solutionToResult(optimizer.getClusterId(), snap.getState()));
                 snaps.put(optimizer.getClusterId(), snap);
             }
         }
