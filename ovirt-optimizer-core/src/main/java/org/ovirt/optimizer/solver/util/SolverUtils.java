@@ -94,7 +94,7 @@ public class SolverUtils {
         solution.setInstances(primaryInstances);
         solution.setOtherFacts(sourceSolution.getOtherFacts());
         solution.setFixedFacts(sourceSolution.getFixedFacts());
-        solution.setVms(solution.getVms());
+        solution.setVms(sourceSolution.getVms());
 
         /* Allow an expected VM start to be specified */
         for (String id : runningIds) {
