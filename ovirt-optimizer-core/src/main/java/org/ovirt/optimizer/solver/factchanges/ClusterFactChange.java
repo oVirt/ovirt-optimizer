@@ -124,9 +124,9 @@ public class ClusterFactChange implements ProblemFactChange {
                 // nothing needed
             } else if (!vmMap.containsKey(step.getInstance().getVmId())) {
                 // vm removed
-                scoreDirector.beforeVariableChanged(step, "vm");
+                scoreDirector.beforeVariableChanged(step, "instance");
                 step.setInstance(null);
-                scoreDirector.afterVariableChanged(step, "vm");
+                scoreDirector.afterVariableChanged(step, "instance");
 
             } else {
                 // vm still present, nothing needed
