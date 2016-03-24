@@ -33,26 +33,26 @@ public class ConfigProvider {
     private Properties config;
 
     public ConfigProvider() {
-        this.config = new Properties();
+        this.config = System.getProperties();
 
         configFile = System.getenv("OVIRT_OPTIMIZER_CONFIG");
         if (configFile == null) {
             configFile = "/etc/ovirt-optimizer/ovirt-optimizer.properties";
         }
 
-        config.setProperty(SDK_SERVER, "localhost");
-        config.setProperty(SDK_PROTOCOL, "http");
-        config.setProperty(SDK_PORT, "8080");
-        config.setProperty(SDK_USERNAME, "admin@internal");
-        config.setProperty(SDK_PASSWORD, "letmein");
-        config.setProperty(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
-        config.setProperty(SDK_REQUEST_TIMEOUT, "10");
-        config.setProperty(SOLVER_STEPS, "10");
-        config.setProperty(SOLVER_TIMEOUT, "30");
-        config.setProperty(SOLVER_DATA_REFRESH, "60");
-        config.setProperty(SOLVER_CLUSTER_REFRESH, "300");
-        config.setProperty(SOLVER_CUSTOM_RULE_DIR, "/etc/ovirt-optimizer/rules.d");
-        config.setProperty(DEBUG_ENDPOINT_ENABLED, "false");
+        config.putIfAbsent(SDK_SERVER, "localhost");
+        config.putIfAbsent(SDK_PROTOCOL, "http");
+        config.putIfAbsent(SDK_PORT, "8080");
+        config.putIfAbsent(SDK_USERNAME, "admin@internal");
+        config.putIfAbsent(SDK_PASSWORD, "letmein");
+        config.putIfAbsent(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
+        config.putIfAbsent(SDK_REQUEST_TIMEOUT, "10");
+        config.putIfAbsent(SOLVER_STEPS, "10");
+        config.putIfAbsent(SOLVER_TIMEOUT, "30");
+        config.putIfAbsent(SOLVER_DATA_REFRESH, "60");
+        config.putIfAbsent(SOLVER_CLUSTER_REFRESH, "300");
+        config.putIfAbsent(SOLVER_CUSTOM_RULE_DIR, "/etc/ovirt-optimizer/rules.d");
+        config.putIfAbsent(DEBUG_ENDPOINT_ENABLED, "false");
     }
 
     @SuppressFBWarnings("DM_DEFAULT_ENCODING")
