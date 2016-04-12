@@ -13,6 +13,8 @@ import java.util.Properties;
 public class ConfigProvider {
     static private Logger log = org.slf4j.LoggerFactory.getLogger(ConfigProvider.class);
 
+    public static final String CONFIG_FILE = "org.ovirt.optimizer.config";
+
     public static final String SDK_SERVER = "org.ovirt.optimizer.sdk.server";
     public static final String SDK_PORT = "org.ovirt.optimizer.sdk.port";
     public static final String SDK_PROTOCOL = "org.ovirt.optimizer.sdk.protocol";
@@ -36,13 +38,18 @@ public class ConfigProvider {
         this.config = System.getProperties();
 
         configFile = System.getenv("OVIRT_OPTIMIZER_CONFIG");
+
+        if (configFile == null) {
+            configFile = config.getProperty(CONFIG_FILE, null);
+        }
+
         if (configFile == null) {
             configFile = "/etc/ovirt-optimizer/ovirt-optimizer.properties";
         }
 
         config.putIfAbsent(SDK_SERVER, "localhost");
-        config.putIfAbsent(SDK_PROTOCOL, "http");
-        config.putIfAbsent(SDK_PORT, "8080");
+        config.putIfAbsent(SDK_PROTOCOL, "https");
+        config.putIfAbsent(SDK_PORT, "443");
         config.putIfAbsent(SDK_USERNAME, "admin@internal");
         config.putIfAbsent(SDK_PASSWORD, "letmein");
         config.putIfAbsent(SDK_CA_STORE, "/etc/ovirt-optimizer/ca.store");
@@ -63,7 +70,8 @@ public class ConfigProvider {
             reader = new FileReader(configFile);
             config.load(reader);
         } catch (IOException ex) {
-            log.error("Connection to oVirt REST server failed", ex);
+            log.warn("Config file {} could not be opened. Using the defaults values with server: {}.",
+                    configFile, config.getProperty(SDK_SERVER));
         } finally {
             try {
                 if (reader != null) {
