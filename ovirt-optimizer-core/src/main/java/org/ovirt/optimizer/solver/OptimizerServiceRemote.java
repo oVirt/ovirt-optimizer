@@ -7,6 +7,7 @@ import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public interface OptimizerServiceRemote {
     Map<String, DebugSnapshot> getDebugSnapshot();
@@ -16,4 +17,5 @@ public interface OptimizerServiceRemote {
     Map<String, ScoreResult> simpleSchedule(String clusterId, OptimalDistributionStepsSolution situation, Result baseResult, String vm);
     void computeVmStart(String cluster, String uuid);
     void cancelVmStart(String cluster, String uuid);
+    Set<String> knownClusters();
 }

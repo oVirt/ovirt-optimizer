@@ -439,4 +439,11 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
         return snaps;
     }
+
+    @Override
+    public Set<String> knownClusters() {
+        synchronized (clusterOptimizers) {
+            return clusterOptimizers.keySet();
+        }
+    }
 }

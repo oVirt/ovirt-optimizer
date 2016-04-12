@@ -16,6 +16,9 @@ import javax.ws.rs.PathParam;
 import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
 
 /**
  * This is the main endpoint for getting the optimization results.
@@ -31,6 +34,13 @@ public class ResultResource {
 
     @Inject
     OptimizerServiceRemote optimizer;
+
+    @GET
+    @Path("/")
+    @Produces("application/json")
+    public List<String> getClusters() {
+        return new ArrayList<>(optimizer.knownClusters());
+    }
 
     @GET
     @Path("/{cluster}")
