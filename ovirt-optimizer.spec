@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.9
+%define project_version 0.10
 %{!?_version: %define _version %{project_version}}
 %{!?_release: %define _release 1}
 %define mvn_sed sed -e 's/mvn(\\([^)]*\\))\\( [>=<]\\{1,2\\} [^ ]\\{1,\\}\\)\\{0,1\\}/\\1/g'
@@ -501,6 +501,14 @@ echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/
 %endif
 
 %changelog
+* Tue Apr 12 2016 Martin Sivak <msivak@redhat.com> 0.10-1
+- Configuration file can be specified on command line
+- Better release procedure
+- Extensive internal refactoring
+- Java 8 support
+- Optaplanner 6.3 support
+- Bugfixes
+
 * Wed May 27 2015 Martin Sivak <msivak@redhat.com> 0.9-1
 - Proper service files for SysV and systemd
 - ovirt-optimizer-setup tool
