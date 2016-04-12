@@ -402,7 +402,7 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 
 %files
 %defattr(644, root, root, 755)
-%doc README
+%doc README.md
 %license COPYING
 %attr(755, root, root) /usr/bin/ovirt-optimizer-setup
 %dir %{_javadir}/%{name}

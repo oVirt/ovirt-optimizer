@@ -1,4 +1,6 @@
-INSTALL
+# oVirt optimizer
+
+## INSTALL
 
 Make sure you have Oracle Java 7 or OpenJDK >= 1.7 installed.
 
@@ -16,13 +18,14 @@ You can download Optaplanner from http://download.jboss.org/optaplanner/release/
 Or you can use the script ovirt-optimizer-setup that will try to do that
 for you.
 
-HTTP REVERSE PROXY
+## HTTP REVERSE PROXY
 
 JBoss is listening on 127.0.0.1 in its default configuration and has no SSL configured. It is common to setup
 a reverse proxy using httpd or nginx to forward the traffic to the web container running optimizer.
 
-- Apache -
+### Apache
 
+```
 cat >/etc/httpd/conf.d/00-optimizer.conf <<EOF
 <VirtualHost *:443>
     SSLEngine on
@@ -37,14 +40,18 @@ cat >/etc/httpd/conf.d/00-optimizer.conf <<EOF
     </Location>
 </VirtualHost>
 EOF
+```
 
 If you are using httpd reverse proxy on RHEL 7.1 with enabled SELinux, you will have to allow
 it to connect to the optimizer service:
 
+```
 setsebool -P httpd_can_network_relay=true
+```
 
-- Nginx -
+### Nginx
 
+```
 server {
     server_name fqdn;
     listen 443;
@@ -62,9 +69,9 @@ server {
         gzip_types      text/plain application/xml application/json;
     }
 }
+```
 
-
-RUN (USING RPM DISTRIBUTION)
+## RUN (USING RPM DISTRIBUTION)
 
 service ovirt-optimizer-jboss start
 systemctl start ovirt-optimizer-jboss
@@ -72,21 +79,22 @@ systemctl start ovirt-optimizer-jboss
 or start Jetty (using its own service files)
 
 
-RUN (USING SOURCE  DISTRIBUTION)
+## RUN (USING SOURCE DISTRIBUTION)
 
-1. using jetty:
+This method uses the Jetty webserver.
 
-1.1. quick developer mode -
+1. quick developer mode -
 
-    OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
-    mvn jetty:run -pl ovirt-optimizer-jetty/
+   OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
+   mvn jetty:run -pl ovirt-optimizer-jetty/
 
-1.2. service mode (forked the bg, with debug port 5005 and 'stop' port 1353) -
+2. service mode (forked the bg, with debug port 5005 and 'stop' port 1353) -
 
-    OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
-    mvn -Prun -pl ovirt-optimizer-jetty/
+   OVIRT_OPTIMIZER_CONFIG=/home/ovirt/ovirt-optimizer.properties \
+   mvn -Prun -pl ovirt-optimizer-jetty/
 
-#sample ovirt-optimizer.properties
+```
+# sample ovirt-optimizer.properties
 org.ovirt.optimizer.sdk.protocol=http
 org.ovirt.optimizer.sdk.server=dockerhost
 org.ovirt.optimizer.sdk.port=8080
@@ -99,30 +107,30 @@ org.ovirt.optimizer.solver.steps=20
 org.ovirt.optimizer.solver.timeout=30
 org.ovirt.optimizer.solver.data.refresh=60
 org.ovirt.optimizer.solver.cluster.refresh=300
-#end of ovirt-optimizer.properties
+# end of ovirt-optimizer.properties
+```
 
-a sample of the file is also under PROJECT-ROOT/ovirt-optimizer-core/src/main/resources
+A sample of the file is also under PROJECT-ROOT/ovirt-optimizer-core/src/main/resources
 
 
-RELEASE
+## RELEASE
 
 How to prepare a release:
 
-1. update the version and changelog in the spec file:
-   sh bump-version.sh <new version>
-   edit the spec file and fill in the changelog entry
-
-2. run:
-   git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz
+1. Run `./release.sh [--major]` from the root directory
+2. Confirm the versions
+3. Edit the spec file that opens and fill in the changelog entry
+4. Run:
+   `git archive --format=tgz HEAD >ovirt-optimizer-{version}.tar.gz`
    or
-   sh make-srpm.sh
+   `sh make-srpm.sh`
 
 
-BUILDING RPMs LOCALLY
+## BUILDING RPMs LOCALLY
 
-rpmbuild --define "_version $VERSION" --define "_release ${VERSION[1]-1}" --nodeps --rebuild ovirt-optimizer-<version>.srpm
+`rpmbuild --define "_version $VERSION" --define "_release ${VERSION[1]-1}" --nodeps --rebuild ovirt-optimizer-<version>.srpm`
 
-BUILDING RPMs IN COPR
+## BUILDING RPMs IN COPR
 
 The following packages have to be always present for EL6 platform:
 
