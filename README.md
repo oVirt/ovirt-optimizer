@@ -1,5 +1,7 @@
 # oVirt optimizer
 
+[![Build Status](https://travis-ci.org/oVirt/ovirt-optimizer.svg?branch=master)](https://travis-ci.org/oVirt/ovirt-optimizer)
+
 ## INSTALL
 
 Make sure you have Oracle Java 7 or OpenJDK >= 1.7 installed.
