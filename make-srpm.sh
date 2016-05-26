@@ -1,5 +1,6 @@
+#!/bin/bash -x
 TMPDIR=.rpmbuild
-mkdir -p .rpmbuild/SPECS .rpmbuild/SOURCES
+mkdir -p .rpmbuild/SPECS .rpmbuild/SOURCES .rpmbuild/RPMS .rpmbuild/BUILD
 
 cp *.spec $TMPDIR/SPECS
 sed -i -e 's/mvn --offline /mvn /g' $TMPDIR/SPECS/ovirt-optimizer.spec
@@ -16,10 +17,10 @@ IFS='-' read -ra VERSION <<< "$VERSION"
 git archive --format=tar HEAD | gzip -9 >$TMPDIR/SOURCES/ovirt-optimizer-$VERSION.tar.gz
 
 if [ ${VERSION[1]-""} != "" ]; then
-DEFRELEASE="--define \"_release ${VERSION[1]-1}\""
+DEFRELEASE="${VERSION[1]-1}"
 else
-DEFRELEASE=""
+DEFRELEASE="1"
 fi
 
-rpmbuild --define "_topdir $TMPDIR" --define "_version $VERSION" $DEFRELEASE -bs --nodeps $TMPDIR/SPECS/ovirt-optimizer.spec
+rpmbuild --define "_topdir $TMPDIR" --define "_version $VERSION" --define "_release $DEFRELEASE" -bs --nodeps $TMPDIR/SPECS/ovirt-optimizer.spec
 

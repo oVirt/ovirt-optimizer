@@ -1,11 +1,10 @@
 #!/bin/sh
+sed -i -e "s/%define project_version .*/%define project_version $1/g" ovirt-optimizer.spec
 
 # Do not create changelog entry for the development version
 if [ "x$2" == "xlatest" ]; then
   exit 0
 fi
-
-sed -i -e "s/%define project_version .*/%define project_version $1/g" ovirt-optimizer.spec
 
 DATE=$(date "+%a %b %d %Y")
 NAME=$(git config user.name)
