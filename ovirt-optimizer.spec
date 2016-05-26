@@ -1,5 +1,7 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.10
+%define project_version 0.11
+%define optaplanner_version 6.4.0.Final
+
 %{!?_version: %define _version %{project_version}}
 %{!?_release: %define _release 1}
 %define mvn_sed sed -e 's/mvn(\\([^)]*\\))\\( [>=<]\\{1,2\\} [^ ]\\{1,\\}\\)\\{0,1\\}/\\1/g'
@@ -9,11 +11,11 @@
 %global engine_data %{_datadir}/ovirt-engine
 %global jetty_deployments %{_datadir}/jetty/webapps
 %global _optaplanner %{_javadir}/%{name}/optaplanner
-%global _optaplanner_archive %{_javadir}/optaplanner-distribution-6.2.0.Final/binaries
+%global _optaplanner_archive %{_javadir}/optaplanner-distribution-%{optaplanner_version}/binaries
 
 %define _jettydir %{_javadir}/jetty
 
-%if 0%{?rhel} && 0%{?rhel} >= 7
+%if 0%{?rhel}
 %global with_jetty 0
 %global with_jboss 1
 %global with_systemd 1
@@ -23,26 +25,7 @@
 %global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
 %endif
 
-%if 0%{?rhel} && 0%{?rhel} < 7
-%global with_jetty 0
-%global with_jboss 1
-%global with_systemd 0
-%global with_sysv 1
-
-# oVirt distribution of JBoss
-%global jboss_deployments %{_javadir}/%{name}/jboss-conf/deployments
-%endif
-
-%if 0%{?fedora} && 0%{?fedora} < 20
-%global with_jboss 1
-%global with_jetty 1
-%global with_systemd 1
-%global with_sysv 0
-
-%global jboss_deployments %{_datadir}/jboss-as/standalone/deployments
-%endif
-
-%if 0%{?fedora} && 0%{?fedora} >= 20
+%if 0%{?fedora}
 %global with_jboss 1
 %global with_jetty 1
 %global with_systemd 1
@@ -72,7 +55,7 @@ BuildRequires:	maven-local
 BuildRequires:	unzip
 BuildRequires:  symlinks
 
-Requires:	java >= 1:1.7.0
+Requires:	java >= 1:1.8.0
 Requires:	jpackage-utils
 Requires:       xmvn
 
@@ -86,20 +69,14 @@ Requires:       unzip
 Requires:       mvn(org.antlr:antlr) >= 3
 Requires:       mvn(org.antlr:antlr-runtime) >= 3
 Requires:       mvn(org.quartz-scheduler:quartz) >= 2.2
-Requires:       mvn(commons-math3:commons-math3)
 %endif
 
-Requires:       mvn(xpp3:xpp3)
 Requires:       mvn(org.apache.httpcomponents:httpclient)
 Requires:       mvn(org.apache.httpcomponents:httpcore)
-
-%if 0%{?fedora} || 0%{?rhel} >= 7
-Requires:       mvn(com.google.protobuf:protobuf-java) >= 2.5
 Requires:       mvn(com.google.guava:guava) >= 13
-%endif
 
 Requires:       mvn(org.slf4j:slf4j-api)
-Requires:       mvn(org.ovirt.engine.sdk:ovirt-engine-sdk-java) >= 3.5.2.0
+Requires:       mvn(org.ovirt.engine.sdk:ovirt-engine-sdk-java) >= 3.6.0.0
 
 %description
 %{name} service collects data from the oVirt engine and proposes
@@ -140,7 +117,7 @@ Requires:      sudo
 Requires:      mvn(log4j:log4j)
 Requires:      mvn(org.slf4j:slf4j-log4j12)
 
-%if 0%{?fedora} && 0%{?fedora} >= 20
+%if 0%{?fedora}
 Requires:	   ovirt-engine-wildfly >= 8.2
 %endif
 
@@ -182,8 +159,6 @@ Requires:      mvn(org.codehaus.jackson:jackson-xc)
 Requires:      mvn(javax.enterprise:cdi-api)
 Requires:      mvn(org.scannotation:scannotation)
 Requires:      mvn(c3p0:c3p0)
-Requires:      mvn(javassist:javassist)
-Requires:      mvn(org.eclipse.jdt.core.compiler:ecj)
 Requires:      mvn(net.jcip:jcip-annotations)
 
 %description jetty
@@ -195,18 +170,8 @@ server.
 Summary:       Libraries not currently provided by the system, but necessary for the project.
 Requires:      %{name} = %{version}
 
-%if 0%{?fedora}
-Requires:      mvn(org.antlr:antlr)
-Requires:      mvn(org.antlr:antlr-runtime)
-Requires:      mvn(commons-io:commons-io)
-Requires:      mvn(commons-lang:commons-lang)
-Requires:      mvn(commons-math3:commons-math3) >= 3
-%endif
-
 Requires:      mvn(commons-beanutils:commons-beanutils)
-Requires:      mvn(commons-codec:commons-codec)
 Requires:      mvn(commons-logging:commons-logging)
-
 
 %description dependencies
 This subpackage bundles libraries that are not provided in the form of RPMs, but are necessary
@@ -278,19 +243,26 @@ mkdir target/lib
 mv target/%{name}-jboss7/WEB-INF/lib/* target/lib
 
 JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
-%if 0%{?rhel}
+%{_optaplanner}/annotations-2.0.1.jar
 %{_optaplanner}/antlr-runtime-3.5.jar
+%{_optaplanner}/commons-codec-1.4.jar
 %{_optaplanner}/commons-io-2.1.jar
-%{_optaplanner}/commons-lang-2.6.jar
-%{_optaplanner}/commons-math3-3.2.jar
-%endif
-%{_optaplanner}/drools-compiler-6.2.0.Final.jar
-%{_optaplanner}/drools-core-6.2.0.Final.jar
-%{_optaplanner}/kie-api-6.2.0.Final.jar
-%{_optaplanner}/kie-internal-6.2.0.Final.jar
-%{_optaplanner}/mvel2-2.2.4.Final.jar
-%{_optaplanner}/optaplanner-core-6.2.0.Final.jar
+%{_optaplanner}/commons-lang3-3.1.jar
+%{_optaplanner}/commons-math3-3.4.1.jar
+%{_optaplanner}/drools-compiler-%{optaplanner_version}.jar
+%{_optaplanner}/drools-core-%{optaplanner_version}.jar
+%{_optaplanner}/ecj-4.4.2.jar
+%{_optaplanner}/javassist-3.18.1-GA.jar
+%{_optaplanner}/kie-api-%{optaplanner_version}.jar
+%{_optaplanner}/kie-internal-%{optaplanner_version}.jar
+%{_optaplanner}/mvel2-2.2.8.Final.jar
+%{_optaplanner}/optaplanner-core-%{optaplanner_version}.jar
+%{_optaplanner}/optaplanner-persistence-common-%{optaplanner_version}.jar
+%{_optaplanner}/optaplanner-persistence-xstream-%{optaplanner_version}.jar
+%{_optaplanner}/protobuf-java-2.6.0.jar
+%{_optaplanner}/reflections-0.9.10.jar
 %{_optaplanner}/xmlpull-1.1.3.1.jar
+%{_optaplanner}/xpp3_min-1.1.4c.jar
 %{_optaplanner}/xstream-1.4.7.jar"
 
 %if 0%{?rhel}

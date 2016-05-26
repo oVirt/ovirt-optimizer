@@ -1,11 +1,11 @@
 package org.ovirt.optimizer.optaplanner;
 
 import org.optaplanner.core.api.score.Score;
-import org.optaplanner.core.impl.phase.custom.CustomPhaseCommand;
+import org.optaplanner.core.impl.phase.custom.AbstractCustomPhaseCommand;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.slf4j.Logger;
 
-public class ScoreOnlyPhase implements CustomPhaseCommand {
+public class ScoreOnlyPhase extends AbstractCustomPhaseCommand {
     static private final Logger logger = org.slf4j.LoggerFactory.getLogger(ScoreOnlyPhase.class);
 
     @Override

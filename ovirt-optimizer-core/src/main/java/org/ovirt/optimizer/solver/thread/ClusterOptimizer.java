@@ -38,7 +38,7 @@ import java.util.Map;
  */
 public class ClusterOptimizer implements Runnable {
     private static Logger log = LoggerFactory.getLogger(ClusterOptimizer.class);
-    final Solver solver;
+    final Solver<OptimalDistributionStepsSolution> solver;
     final String clusterId;
     private volatile OptimalDistributionStepsSolution bestSolution;
     ClusterInfoUpdater updater;
@@ -96,11 +96,11 @@ public class ClusterOptimizer implements Runnable {
         this.finishedCallback = finishedCallback;
         this.customDrlFiles = customDrlFiles;
 
-        SolverFactory solverFactory;
+        SolverFactory<OptimalDistributionStepsSolution> solverFactory;
 
         if (maxSteps > 0) {
             // Construct full optimizer
-             solverFactory =
+            solverFactory =
                     SolverFactory.createFromXmlResource("org/ovirt/optimizer/solver/rules/solver.xml");
 
             SolverUtils.addCustomDrlFiles(solverFactory.getSolverConfig().getScoreDirectorFactoryConfig(),
@@ -131,9 +131,9 @@ public class ClusterOptimizer implements Runnable {
 
         solver = solverFactory.buildSolver();
 
-        solver.addEventListener(new SolverEventListener() {
+        solver.addEventListener(new SolverEventListener<OptimalDistributionStepsSolution>() {
             @Override
-            public void bestSolutionChanged(BestSolutionChangedEvent bestSolutionChangedEvent) {
+            public void bestSolutionChanged(BestSolutionChangedEvent<OptimalDistributionStepsSolution> bestSolutionChangedEvent) {
                 // Ignore incomplete solutions
                 if (!solver.isEveryProblemFactChangeProcessed()) {
                     log.debug("Ignoring incomplete solution");
@@ -147,7 +147,7 @@ public class ClusterOptimizer implements Runnable {
 
                 synchronized (ClusterOptimizer.this) {
                     // Get new solution and set the timestamp to current time
-                    bestSolution = (OptimalDistributionStepsSolution)bestSolutionChangedEvent.getNewBestSolution();
+                    bestSolution = bestSolutionChangedEvent.getNewBestSolution();
                     bestSolution.setTimestamp(System.currentTimeMillis());
 
                     log.info(String.format("New solution for %s available (score %s)",
@@ -195,7 +195,7 @@ public class ClusterOptimizer implements Runnable {
         solver.solve(bestSolution);
         log.info(String.format("Solver for %s finished", clusterId));
         synchronized (this) {
-            bestSolution = (OptimalDistributionStepsSolution) solver.getBestSolution();
+            bestSolution = solver.getBestSolution();
         }
     }
 

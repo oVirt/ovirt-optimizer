@@ -82,7 +82,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             log.warn(String.format("Unknown timeout from %s", timer.toString()));
             return;
         }
-
+        
         log.debug("Discovering clusters...");
         Set<String> availableClusters = discovery.getClusters();
         if (availableClusters == null) {

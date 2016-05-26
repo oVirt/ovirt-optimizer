@@ -49,7 +49,7 @@
         <!-- fixes deployment issue //-->
         <xpp3_min.version>1.1.4c</xpp3_min.version>
 
-        <optaplanner.version>6.3.0.Final</optaplanner.version>
+        <optaplanner.version>6.4.0.Final</optaplanner.version>
         <ovirt-engine.sdk.version>3.6.0.3</ovirt-engine.sdk.version>
         <quartz.version>2.2.0</quartz.version>
 

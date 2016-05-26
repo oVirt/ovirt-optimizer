@@ -1,13 +1,13 @@
 #!/bin/sh
 NAME="Optaplanner"
-VERSION="6.3.0.Final"
+VERSION="6.4.0.Final"
 URL="http://download.jboss.org/optaplanner/release/$VERSION/optaplanner-distribution-$VERSION.zip"
 LOCAL="$HOME/optaplanner-distribution-$VERSION.zip"
 DEPLOYMENT="/usr/share/java/optaplanner-distribution-$VERSION"
 
 # Double checksum to protect against simple collisions
-MD5="ab783d04ceab19ebedcda79912cd7db2"
-SHA224="17927f69e2537968a5276f2fe9486621c6ff77f8d013d7ea98cfd074"
+MD5="59535ecf7c7ebc6ed541402962d15b16"
+SHA224="18488c8d456acde26681372de3d5baae31abf13e0f0dbc37f81ccc14"
 
 ### There should be no need to edit anything below this line ###
 

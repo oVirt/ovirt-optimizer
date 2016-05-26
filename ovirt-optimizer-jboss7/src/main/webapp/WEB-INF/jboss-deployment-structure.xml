@@ -4,6 +4,7 @@
         <exclusions>
             <module name="org.apache.log4j" />
             <module name="org.slf4j" />
+            <module name="io.undertow.jsp" />
             <module name="org.jboss.resteasy.resteasy-jackson2-provider"/>
             <module name="org.jboss.resteasy.resteasy-jettison-provider"/>
         </exclusions>
