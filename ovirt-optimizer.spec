@@ -12,6 +12,7 @@
 %global jetty_deployments %{_datadir}/jetty/webapps
 %global _optaplanner %{_javadir}/%{name}/optaplanner
 %global _optaplanner_archive %{_javadir}/optaplanner-distribution-%{optaplanner_version}/binaries
+%global log_config_file log4j.properties
 
 %define _jettydir %{_javadir}/jetty
 
@@ -46,7 +47,7 @@ Source0:	http://ovirt.org/releases/stable/src/%{name}-%{version}.tar.gz
 
 BuildArch:	noarch
 
-BuildRequires:	java-devel
+BuildRequires:  java-1.8.0-openjdk-devel
 BuildRequires:	jpackage-utils
 
 BuildRequires:  maven
@@ -114,9 +115,6 @@ BuildRequires: systemd
 Requires:      sudo
 %endif
 
-Requires:      mvn(log4j:log4j)
-Requires:      mvn(org.slf4j:slf4j-log4j12)
-
 %if 0%{?fedora}
 Requires:	   ovirt-engine-wildfly >= 8.2
 %endif
@@ -143,9 +141,6 @@ Requires(post): %{name}-dependencies = %{version}
 
 Requires:      jetty >= 9
 
-Requires:      mvn(log4j:log4j)
-Requires:      mvn(org.slf4j:slf4j-log4j12)
-
 Requires:      mvn(org.jboss.spec.javax.annotation:jboss-annotations-api_1.1_spec)
 Requires:      mvn(org.jboss.spec.javax.transaction:jboss-transaction-api_1.1_spec)
 Requires:      mvn(org.apache.tomcat:tomcat-jsp-api)
@@ -160,6 +155,7 @@ Requires:      mvn(javax.enterprise:cdi-api)
 Requires:      mvn(org.scannotation:scannotation)
 Requires:      mvn(c3p0:c3p0)
 Requires:      mvn(net.jcip:jcip-annotations)
+Requires:      mvn(org.jboss.weld.servlet:weld-servlet) >= 2.2
 
 %description jetty
 This subpackage deploys the optimizer service to Jetty application
@@ -172,6 +168,17 @@ Requires:      %{name} = %{version}
 
 Requires:      mvn(commons-beanutils:commons-beanutils)
 Requires:      mvn(commons-logging:commons-logging)
+
+%if 0%{?fedora}
+Requires:      mvn(log4j:log4j:12)
+%endif
+
+%if 0%{?rhel}
+Requires:      mvn(log4j:log4j)
+%endif
+
+Requires:      mvn(org.slf4j:slf4j-log4j12)
+
 
 %description dependencies
 This subpackage bundles libraries that are not provided in the form of RPMs, but are necessary
@@ -277,8 +284,8 @@ JBOSS_BUNDLE=""
 cp -ar target/%{name}-jboss7 %{buildroot}%{_javadir}/%{name}/jboss.war
 
 # Move config file to etc and symlink it to the right place
-mv %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/log4j.properties %{buildroot}/etc/%{name}/logging-jboss.properties
-ln -sf /etc/%{name}/logging-jboss.properties %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/log4j.properties
+mv %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/%{log_config_file} %{buildroot}/etc/%{name}/jboss-%{log_config_file}
+ln -sf /etc/%{name}/jboss-%{log_config_file} %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/classes/%{log_config_file}
 
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib @"
@@ -318,8 +325,7 @@ JETTY_SYMLINK="%{_jettydir}/jetty-jmx.jar
 %{_jettydir}/jetty-servlet.jar
 %{_jettydir}/jetty-util.jar"
 
-JETTY_BUNDLE="target/lib/weld-*
-target/lib/activation-1.1*
+JETTY_BUNDLE="target/lib/activation-1.1*
 target/lib/javax.inject-1.jar
 target/lib/jsr250-*"
 
@@ -330,8 +336,8 @@ install -dm 755 %{buildroot}%{_javadir}/%{name}/jetty
 cp -ar target/%{name}-jetty %{buildroot}%{_javadir}/%{name}/jetty/%{name}
 
 # Move config file to etc and symlink it to the right place
-mv %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/log4j.properties %{buildroot}/etc/%{name}/logging-jetty.properties
-ln -sf /etc/%{name}/logging-jetty.properties %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/log4j.properties
+mv %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/%{log_config_file} %{buildroot}/etc/%{name}/jetty-%{log_config_file}
+ln -sf /etc/%{name}/jetty-%{log_config_file} %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/classes/%{log_config_file}
 
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jetty/%{name}/WEB-INF/lib @"
@@ -384,7 +390,7 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 %if 0%{?with_jetty}
 %files jetty
 %defattr(644, root, root, 755)
-%config(noreplace) /etc/%{name}/logging-jetty.properties
+%config(noreplace) /etc/%{name}/jetty*
 %dir %{_javadir}/%{name}/jetty/%{name}
 %{_javadir}/%{name}/jetty/%{name}/*
 %{jetty_deployments}/*
@@ -393,7 +399,7 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 %if 0%{?with_jboss}
 %files jboss
 %defattr(644, root, root, 755)
-%config(noreplace) /etc/%{name}/logging-jboss.properties
+%config(noreplace) /etc/%{name}/jboss*
 %dir %{_javadir}/%{name}/jboss.war
 %{_javadir}/%{name}/jboss.war/*
 %dir %{_javadir}/%{name}/jboss-conf
