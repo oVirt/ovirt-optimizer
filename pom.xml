@@ -117,8 +117,8 @@
             </repositories>
 
             <properties>
-                <redhat.repository>https://maven.repository.redhat.com/ga/all</redhat.repository>
-                <optaplanner.version>6.3.0.Final-redhat-5</optaplanner.version>
+                <redhat.repository>https://maven.repository.redhat.com/ga</redhat.repository>
+                <optaplanner.version>6.4.0.Final-redhat-3</optaplanner.version>
                 <ovirt-engine.sdk.version>3.6.0.3</ovirt-engine.sdk.version>
             </properties>
         </profile>
