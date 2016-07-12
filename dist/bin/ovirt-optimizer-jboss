@@ -2,7 +2,11 @@
 
 OPTIMIZER_CONF="/usr/share/java/ovirt-optimizer/jboss-conf"
 
-if [ -r /usr/share/ovirt-engine-wildfly ]; then
+if [ -r /opt/rh/eap7/root/usr/share/wildfly ]; then
+    JBOSS_HOME="/opt/rh/eap7/root/usr/share/wildfly"
+    JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
+    JBOSS_MGMT_PORT=9990
+elif [ -r /usr/share/ovirt-engine-wildfly ]; then
     JBOSS_HOME="/usr/share/ovirt-engine-wildfly"
     JBOSS_CONFIG_DIR="$OPTIMIZER_CONF/wildfly"
     JBOSS_MGMT_PORT=9990
