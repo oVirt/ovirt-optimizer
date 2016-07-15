@@ -1,6 +1,8 @@
 package org.ovirt.optimizer.solver.test;
 
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import org.optaplanner.core.api.score.constraint.ConstraintMatch;
+import org.optaplanner.core.api.score.constraint.ConstraintMatchTotal;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.CPU;
@@ -126,6 +128,20 @@ public class TestOptimizer {
         ScoreDirector director = solver.getScoreDirectorFactory().buildScoreDirector();
         director.setWorkingSolution(bestSolution);
         HardSoftScore score = (HardSoftScore)director.calculateScore();
+
+        for (ConstraintMatchTotal constraintMatchTotal : director.getConstraintMatchTotals()) {
+            String constraintName = constraintMatchTotal.getConstraintName();
+            Number weightTotal = constraintMatchTotal.getWeightTotalAsNumber();
+            for (ConstraintMatch constraintMatch : constraintMatchTotal.getConstraintMatchSet()) {
+                List<Object> justificationList = constraintMatch.getJustificationList();
+                Number weight = constraintMatch.getWeightAsNumber();
+                System.out.println(String.format("Constraint match %s with weight %d", constraintMatch, weight.intValue()));
+                for (Object item : justificationList) {
+                    System.out.println(String.format("Justified by %s", item));
+                }
+            }
+        }
+
         cleanup();
 
         return score;
