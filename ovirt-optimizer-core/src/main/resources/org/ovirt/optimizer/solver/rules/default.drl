@@ -10,6 +10,7 @@ import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.optimizer.optaplanner.RuleLogger;
 
+import org.ovirt.optimizer.solver.facts.AffinityLabel;
 import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.facts.PolicyUnitEnabled;
@@ -518,4 +519,18 @@ rule "haReservationHasToUseDifferentHost"
         Migration(getAssignment($id1) == getAssignment($id2))
     then
         scoreHolder.addSoftConstraintMatch(kcontext, -10);
+end
+
+// Check labels for VMs
+rule "affinityLabelsEnforcing"
+    when
+        exists PolicyUnitEnabled(uuid == PolicyUnit.AFFINITY_LABEL_FILTER.uuid)
+        Instance( $id1 : id, $vmId : vmId, $primary : primary)
+        $step : Migration(valid == true || finalStep == true)
+        Host(id == $step.getAssignment($id1), $hostId : id)
+        AffinityLabel($labelId: id, references == $vmId)
+        not(exists AffinityLabel(id == $labelId, references == $hostId))
+    then
+        if ($primary == true) scoreHolder.addHardConstraintMatch(kcontext, -10);
+        else scoreHolder.addSoftConstraintMatch(kcontext, -10);
 end
