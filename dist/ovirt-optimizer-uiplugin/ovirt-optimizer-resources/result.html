@@ -237,15 +237,13 @@
     var clusterid = window.location.href.split("#")[1];
     var resultPage = angular.module('resultPage', []);
 
-    /* CSRF protection for engine REST API */
-    var engineSessionId = null;
+    var engineHttpHeaders = function() {
+      var ssoToken = api.ssoToken();
 
-    function setSessionId(sessionId) {
-        engineSessionId = sessionId;
-    }
-
-    /* Tell the parent to publish the sessionId here */
-    parent.postMessage('SESSIONID', '*');
+      return {"Content-Type": "application/json",
+      "Accept": "application/json",
+      "Authorization": 'Bearer ' + ssoToken};
+    };
 
     function disableButton(button, icon) {
         button.disabled = true;
@@ -271,19 +269,10 @@
         $scope.migrate = function(vm, host, event) {
             console.log("Initiating migration of vm "+vm+" to host "+host);
 
-            if (engineSessionId == null) {
-                $scope.valid = "REST session has not been authenticated yet";
-                $scope.status = "warning";
-                return;
-            }
-
             $http({
                 method: 'POST',
                 url: "/ovirt-engine/api/vms/" + vm + "/migrate",
-                headers: {"Content-Type": "application/json",
-                          "Accept": "application/json",
-                          "JSESSIONID": engineSessionId,
-                          "Prefer": "persistent-auth"},
+                headers: engineHttpHeaders(),
                 data: {host: {id: host},
                        async: true}
             }).success(function (data) {
@@ -299,19 +288,10 @@
         $scope.start = function(vm, host, event) {
             console.log("Initiating start of vm " + vm + " on host "+host);
 
-            if (engineSessionId == null) {
-                $scope.valid = "REST session has not been authenticated yet";
-                $scope.status = "warning";
-                return;
-            }
-
             $http({
                 method: 'POST',
                 url: "/ovirt-engine/api/vms/" + vm + "/start",
-                headers: {"Content-Type": "application/json",
-                          "Accept": "application/json",
-                          "JSESSIONID": engineSessionId,
-                          "Prefer": "persistent-auth"},
+                headers: engineHttpHeaders(),
                 data: {
                     vm: {
                         placement_policy: {
@@ -334,8 +314,7 @@
             $http({
                 method: 'POST',
                 url: cfg["baseurl"]+clusterid+"/cancel",
-                headers: {"Content-Type": "application/json",
-                          "Accept": "application/json"},
+                headers: engineHttpHeaders(),
                 data: {id: vm}
             }).success(function (data) {
                 $scope.valid = "Waiting for updated solution.";
@@ -448,13 +427,6 @@
         };
 
         $scope.refreshHostInfo = function() {
-            if (engineSessionId == null) {
-                $scope.valid = "REST session has not been authenticated yet";
-                $scope.status = "warning";
-                $timeout($scope.refreshHostInfo, 15000);
-                return;
-            }
-
             hostsFactory.getResult().success(function (data) {
                 data.host.forEach(function (host) {
                     console.log("Updating host "+host.id);
@@ -470,13 +442,6 @@
         };
 
         $scope.refreshVmInfo = function() {
-            if (engineSessionId == null) {
-                $scope.valid = "REST session has not been authenticated yet";
-                $scope.status = "warning";
-                $timeout($scope.refreshVmInfo, 15000);
-                return;
-            }
-
             vmsFactory.getResult().success(function (data) {
                 data.vm.forEach(function (vm) {
                     console.log("Updating vm "+vm.id);
@@ -506,9 +471,8 @@
             console.log("/ovirt-engine/api/hosts");
             return $http({method: 'GET',
                 url: "/ovirt-engine/api/hosts",
-                headers: {"Accept": "application/json",
-                          "JSESSIONID": engineSessionId,
-                          "Prefer": "persistent-auth"}});
+                headers: engineHttpHeaders()
+            });
         };
         return factory;
     });
@@ -518,9 +482,8 @@
         factory.getResult = function() {
             return $http({method: 'GET',
                 url: "/ovirt-engine/api/vms",
-                headers: {"Accept": "application/json",
-                          "JSESSIONID": engineSessionId,
-                          "Prefer": "persistent-auth"}});
+                headers: engineHttpHeaders()
+            });
         };
         return factory;
     });

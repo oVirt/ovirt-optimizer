@@ -8,7 +8,6 @@
     var cfg = api.configObject();
 
     var resultsTab = null;
-    var sessionId = null;
 
     function vmAction(action, paramsVms) {
         return $.ajax({method: 'GET',
@@ -89,22 +88,6 @@
                 api.setTabContentUrl('ovirt-optimizer-cluster-tab',
                         'plugin/oVirtOptimizer/result.html#'+arguments[0].id);
                 api.setTabAccessible('ovirt-optimizer-cluster-tab', true);
-            }
-        },
-        RestApiSessionAcquired: function(newSessionId) {
-            sessionId = newSessionId;
-            if (resultsTab != null) {
-                resultsTab.setSessionId(sessionId);
-            }
-        },
-        MessageReceived: function(data, source) {
-            if (data != "SESSIONID") {
-                return;
-            }
-
-            resultsTab = source;
-            if (sessionId != null) {
-                source.setSessionId(sessionId);
             }
         }
     });
