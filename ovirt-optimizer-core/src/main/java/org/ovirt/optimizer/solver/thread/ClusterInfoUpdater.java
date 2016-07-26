@@ -17,9 +17,12 @@ import org.ovirt.engine.sdk.entities.Statistic;
 import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
+import org.ovirt.engine.sdk4.Connection;
+import org.ovirt.engine.sdk4.services.AffinityLabelsService;
 import org.ovirt.optimizer.config.ConfigProvider;
 import org.ovirt.optimizer.ovirt.OvirtClient;
 import org.ovirt.optimizer.solver.factchanges.ClusterUpdateAvailable;
+import org.ovirt.optimizer.solver.facts.AffinityLabel;
 import org.ovirt.optimizer.solver.facts.HostInfo;
 import org.ovirt.optimizer.solver.facts.HostStats;
 import org.ovirt.optimizer.solver.facts.PolicyUnitEnabled;
@@ -82,6 +85,26 @@ public class ClusterInfoUpdater implements Runnable {
                 for(ClusterAffinityGroup group : clusterInstance.getAffinityGroups().list()){
                     VmAffinityGroup fact = VmAffinityGroup.create(group, group.getVMs().list());
                     facts.add(fact);
+                }
+
+                // Import affinity labels (available since engine 4.0, handle failure gracefully)
+                if (engine.getProductInfo().getVersion().getMajor() >= 4) {
+                    Connection apiv4 = ovirtClient.getApi4Connection();
+                    final AffinityLabelsService affinityLabelsService =
+                            apiv4.systemService().affinityLabelsService();
+
+                    affinityLabelsService
+                            .list().send().labels().stream().forEach(label -> {
+                        log.debug("Discovered AffinityLabel {} ({})",
+                                label.name(), label.id());
+
+                        affinityLabelsService.labelService(label.id())
+                                .hostsService().list().send().hosts().stream()
+                                .forEach(host -> facts.add(new AffinityLabel(label.id(), host.id())));
+                        affinityLabelsService.labelService(label.id())
+                                .vmsService().list().send().vms().stream()
+                                .forEach(vm -> facts.add(new AffinityLabel(label.id(), vm.id())));
+                    });
                 }
 
                 boolean threadsAsCores = clusterInstance.getThreadsAsCores();

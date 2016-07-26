@@ -77,7 +77,8 @@ Requires:       mvn(org.apache.httpcomponents:httpcore)
 Requires:       mvn(com.google.guava:guava) >= 13
 
 Requires:       mvn(org.slf4j:slf4j-api)
-Requires:       mvn(org.ovirt.engine.sdk:ovirt-engine-sdk-java) >= 3.6.0.0
+Requires:       mvn(org.ovirt.engine.sdk:ovirt-engine-sdk-java) >= 3.6.0.4
+Requires:       mvn(org.ovirt.engine.api:sdk) >= 4.0.0.alpha13
 
 %description
 %{name} service collects data from the oVirt engine and proposes

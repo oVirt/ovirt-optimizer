@@ -60,6 +60,11 @@
             <version>${ovirt-engine.sdk.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.ovirt.engine.api</groupId>
+            <artifactId>sdk</artifactId>
+            <version>${ovirt-engine.sdk4.version}</version>
+        </dependency>
+        <dependency>
             <groupId>xpp3</groupId>
             <artifactId>xpp3_min</artifactId>
             <version>${xpp3_min.version}</version>
@@ -109,6 +114,14 @@
                         <version>${version.findbugs.annotations}</version>
                     </dependency>
                 </dependencies>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <configuration>
+                    <source>1.8</source>
+                    <target>1.8</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>
