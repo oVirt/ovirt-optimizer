@@ -480,6 +480,12 @@ echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/
 %endif
 
 %changelog
+* Wed Aug 31 2016 Martin Sivak <msivak@redhat.com> 0.11-1
+- Support for Affinity Labels in oVirt 4
+- Optaplanner 6.4 support
+- oVirt 4 REST authentication mode for UI plugin
+- Rule updates to match some oVirt changes
+
 * Tue Apr 12 2016 Martin Sivak <msivak@redhat.com> 0.10-1
 - Configuration file can be specified on command line
 - Better release procedure
