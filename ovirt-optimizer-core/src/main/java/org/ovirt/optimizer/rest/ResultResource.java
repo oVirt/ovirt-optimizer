@@ -2,6 +2,7 @@ package org.ovirt.optimizer.rest;
 
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.rest.dto.VmIdRequest;
 import org.ovirt.optimizer.solver.OptimizerServiceRemote;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.slf4j.Logger;
@@ -68,7 +69,7 @@ public class ResultResource {
     @Path("/{cluster}/request")
     @Produces("application/json")
     @Consumes("application/json")
-    public Response requestVm(RunningVm request,
+    public Response requestVm(VmIdRequest request,
                               @PathParam("cluster") String cluster) {
         optimizer.computeVmStart(cluster, request.getId());
         return Response.ok()
@@ -82,7 +83,7 @@ public class ResultResource {
     @Path("/{cluster}/cancel")
     @Produces("application/json")
     @Consumes("application/json")
-    public Response cancelVm(RunningVm request,
+    public Response cancelVm(VmIdRequest request,
                              @PathParam("cluster") String cluster) {
 
         optimizer.cancelVmStart(cluster, request.getId());
