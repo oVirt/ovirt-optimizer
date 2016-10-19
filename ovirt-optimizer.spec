@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.12-SNAPSHOT
+%define project_version 0.12
 %define optaplanner_version 6.4.0.Final
 
 %{!?_version: %define _version %{project_version}}
@@ -480,6 +480,10 @@ echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/
 %endif
 
 %changelog
+* Wed Oct 19 2016 Martin Sivak <msivak@redhat.com> 0.12-1
+- Fix the optimize start endpoint deserialization
+- Require the fixed oVirt SDKv4
+
 * Wed Aug 31 2016 Martin Sivak <msivak@redhat.com> 0.11-1
 - Support for Affinity Labels in oVirt 4
 - Optaplanner 6.4 support
