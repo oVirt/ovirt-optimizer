@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.13
+%define project_version 0.14-SNAPSHOT
 %define project_release 1
 %define optaplanner_version 6.4.0.Final
 
