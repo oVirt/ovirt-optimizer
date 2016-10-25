@@ -1,9 +1,10 @@
 # The version macro to be redefined by Jenkins build when needed
 %define project_version 0.13-SNAPSHOT
+%define project_release 1
 %define optaplanner_version 6.4.0.Final
 
 %{!?_version: %define _version %{project_version}}
-%{!?_release: %define _release 1}
+%{!?_release: %define _release %{project_release}}
 %define mvn_sed sed -e 's/mvn(\\([^)]*\\))\\( [>=<]\\{1,2\\} [^ ]\\{1,\\}\\)\\{0,1\\}/\\1/g'
 %{!?_licensedir:%global license %doc}
 

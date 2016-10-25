@@ -22,5 +22,8 @@ else
 DEFRELEASE="1"
 fi
 
+sed -i -e "s/%define project_version .*/%define project_version $VERSION/g" $TMPDIR/SPECS/ovirt-optimizer.spec
+sed -i -e "s/%define project_release .*/%define project_release $DEFRELEASE/g" $TMPDIR/SPECS/ovirt-optimizer.spec
+
 rpmbuild --define "_topdir $TMPDIR" --define "_version $VERSION" --define "_release $DEFRELEASE" -bs --nodeps $TMPDIR/SPECS/ovirt-optimizer.spec
 
