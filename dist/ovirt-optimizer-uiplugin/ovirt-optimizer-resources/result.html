@@ -314,7 +314,8 @@
             $http({
                 method: 'POST',
                 url: cfg["baseurl"]+clusterid+"/cancel",
-                headers: engineHttpHeaders(),
+                headers: {"Content-Type": "application/json",
+                          "Accept": "application/json"},
                 data: {id: vm}
             }).success(function (data) {
                 $scope.valid = "Waiting for updated solution.";
