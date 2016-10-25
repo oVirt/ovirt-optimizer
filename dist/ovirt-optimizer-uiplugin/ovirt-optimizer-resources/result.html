@@ -280,7 +280,7 @@
                 $scope.valid = "Waiting for the migration to start.";
                 $scope.status = "waiting";
             }).error(function (data, status) {
-                $scope.valid = "Migration start failed ("+status+"): "+data.fault.detail;
+                $scope.valid = "Migration start failed ("+status+"): "+data.detail;
                 $scope.status = "action-error";
             });
         };
@@ -295,7 +295,7 @@
                 data: {
                     vm: {
                         placement_policy: {
-                            host: {id: host}
+                            hosts: { host: [ {id: host} ] }
                         }
                     },
                     async: true
@@ -305,7 +305,7 @@
                 $scope.valid = "Waiting for the VM to start.";
                 $scope.status = "waiting";
             }).error(function (data, status) {
-                $scope.valid = "VM start failed ("+status+"): "+data.fault.detail;
+                $scope.valid = "VM start failed ("+status+"): "+data.detail;
                 $scope.status = "action-error";
             });
         };
