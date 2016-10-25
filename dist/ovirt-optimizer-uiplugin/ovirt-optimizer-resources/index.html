@@ -12,7 +12,8 @@
     function vmAction(action, paramsVms) {
         return $.ajax({method: 'GET',
             url: "/ovirt-engine/api/vms",
-            headers: {"Accept": "application/json"},
+            headers: {"Accept": "application/json",
+                      "Authorization": 'Bearer ' + api.ssoToken()},
             success: function (data) {
                 // Create VM to Cluster cache
                 var mapping = {};
