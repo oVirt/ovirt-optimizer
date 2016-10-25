@@ -146,7 +146,7 @@
         <tr ng-repeat="vm in result.requestedVms">
             <td>{{ vms[vm].name }}</td>
             <td><button ng-click="cancel_start(vm, $event);"><i class="fa fa-times"></i> Cancel</button></td>
-            <td><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+            <td><i class="fa state-{{ vms[vm].status }}"></i> {{ vms[vm].status }}</td>
         </tr>
     </table>
     <p ng-hide="result.requestedVms.length">No VM starts are requested at this moment.</p>
@@ -157,11 +157,11 @@
         <tbody ng-repeat="step in result.migrations">
         <tr ng-repeat="(vm, host) in step">
             <td>{{ vms[vm].name }} &rarr; {{ hosts[host].name }}</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state == 'down'"><button ng-click="start(vm, host, $event)"><i class="fa fa-play"></i> start on {{ hosts[host].name }}</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state != 'down'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status == 'down'"><button ng-click="start(vm, host, $event)"><i class="fa fa-play"></i> start on {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status != 'down'"><i class="fa state-{{ vms[vm].status }}"></i> {{ vms[vm].status }}</td>
 
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state == 'up'"><button ng-click="migrate(vm, host, $event)"><i class="fa fa-forward"></i> migrate to {{ hosts[host].name }}</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state != 'up'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status == 'up'"><button ng-click="migrate(vm, host, $event)"><i class="fa fa-forward"></i> migrate to {{ hosts[host].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status != 'up'"><i class="fa state-{{ vms[vm].status }}"></i> {{ vms[vm].status }}</td>
         </tr>
         </tbody>
     </table>
@@ -204,11 +204,11 @@
             <td><i class="fa fa-desktop"></i> {{ vms[vm].name }}</td>
             <td>{{ vms[vm].memory_policy.guaranteed / gb | number : 1 }}</td>
             <td>{{ vms[vm].memory / gb | number : 1 }}</td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state == 'down'"><button ng-click="start(vm, result.vmToHost[vm], $event)"><i class="fa fa-play"></i> start here</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status.state != 'down'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status == 'down'"><button ng-click="start(vm, result.vmToHost[vm], $event)"><i class="fa fa-play"></i> start here</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] == null) && vms[vm].status != 'down'"><i class="fa state-{{ vms[vm].status }}"></i> {{ vms[vm].status }}</td>
 
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state == 'up'"><button ng-click="migrate(vm, result.vmToHost[vm], $event)"><i class="fa fa-fast-forward"></i> migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
-            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status.state != 'up'"><i class="fa state-{{ vms[vm].status.state }}"></i> {{ vms[vm].status.state }}</td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status == 'up'"><button ng-click="migrate(vm, result.vmToHost[vm], $event)"><i class="fa fa-fast-forward"></i> migrate from {{ hosts[result.currentVmToHost[vm]].name }}</button></td>
+            <td ng-if="(result.vmToHost[vm] != result.currentVmToHost[vm]) && (result.currentVmToHost[vm] != null) && vms[vm].status != 'up'"><i class="fa state-{{ vms[vm].status }}"></i> {{ vms[vm].status }}</td>
 
             <td ng-if="result.vmToHost[vm] == result.currentVmToHost[vm]">&nbsp;</td>
         </tr>
