@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.13-SNAPSHOT
+%define project_version 0.13
 %define project_release 1
 %define optaplanner_version 6.4.0.Final
 
@@ -481,6 +481,9 @@ echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/
 %endif
 
 %changelog
+* Tue Oct 25 2016 Martin Sivak <msivak@redhat.com> 0.13-1
+- Fix issues the UI plugin had with engine's v4 REST
+
 * Wed Oct 19 2016 Martin Sivak <msivak@redhat.com> 0.12-1
 - Fix the optimize start endpoint deserialization
 - Require the fixed oVirt SDKv4
