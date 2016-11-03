@@ -15,9 +15,11 @@ import org.ovirt.engine.sdk.entities.Network;
 import org.ovirt.engine.sdk.entities.Property;
 import org.ovirt.engine.sdk.entities.Statistic;
 import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.engine.sdk.exceptions.OvirtSdkException;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
 import org.ovirt.engine.sdk4.Connection;
+import org.ovirt.engine.sdk4.Error;
 import org.ovirt.engine.sdk4.services.AffinityLabelsService;
 import org.ovirt.optimizer.config.ConfigProvider;
 import org.ovirt.optimizer.ovirt.OvirtClient;
@@ -87,24 +89,28 @@ public class ClusterInfoUpdater implements Runnable {
                     facts.add(fact);
                 }
 
-                // Import affinity labels (available since engine 4.0, handle failure gracefully)
-                if (engine.getProductInfo().getVersion().getMajor() >= 4) {
-                    Connection apiv4 = ovirtClient.getApi4Connection();
-                    final AffinityLabelsService affinityLabelsService =
-                            apiv4.systemService().affinityLabelsService();
+                try {
+                    // Import affinity labels (available since engine 4.0, handle failure gracefully)
+                    if (engine.getProductInfo().getVersion().getMajor() >= 4) {
+                        Connection apiv4 = ovirtClient.getApi4Connection();
+                        final AffinityLabelsService affinityLabelsService =
+                                apiv4.systemService().affinityLabelsService();
 
-                    affinityLabelsService
-                            .list().send().labels().stream().forEach(label -> {
-                        log.debug("Discovered AffinityLabel {} ({})",
-                                label.name(), label.id());
+                        affinityLabelsService
+                                .list().send().labels().stream().forEach(label -> {
+                            log.debug("Discovered AffinityLabel {} ({})",
+                                    label.name(), label.id());
 
-                        affinityLabelsService.labelService(label.id())
-                                .hostsService().list().send().hosts().stream()
-                                .forEach(host -> facts.add(new AffinityLabel(label.id(), host.id())));
-                        affinityLabelsService.labelService(label.id())
-                                .vmsService().list().send().vms().stream()
-                                .forEach(vm -> facts.add(new AffinityLabel(label.id(), vm.id())));
-                    });
+                            affinityLabelsService.labelService(label.id())
+                                    .hostsService().list().send().hosts().stream()
+                                    .forEach(host -> facts.add(new AffinityLabel(label.id(), host.id())));
+                            affinityLabelsService.labelService(label.id())
+                                    .vmsService().list().send().vms().stream()
+                                    .forEach(vm -> facts.add(new AffinityLabel(label.id(), vm.id())));
+                        });
+                    }
+                } catch (IOException|Error ex) {
+                    log.error("SDKv4 threw an error and affinity labels won't work.", ex);
                 }
 
                 boolean threadsAsCores = clusterInstance.getThreadsAsCores();
@@ -222,16 +228,7 @@ public class ClusterInfoUpdater implements Runnable {
                     }
                     facts.addAll(schedulingPolicyProperties);
                 }
-            } catch (ConnectException ex) {
-                log.error("Cluster update failed", ex);
-                continue;
-            } catch (IOException ex) {
-                log.error("Cluster update failed", ex);
-                continue;
-            } catch (ServerException ex) {
-                log.error("Cluster update failed", ex);
-                continue;
-            } catch (UnsecuredConnectionAttemptError ex) {
+            } catch (IOException|OvirtSdkException ex) {
                 log.error("Cluster update failed", ex);
                 continue;
             }
