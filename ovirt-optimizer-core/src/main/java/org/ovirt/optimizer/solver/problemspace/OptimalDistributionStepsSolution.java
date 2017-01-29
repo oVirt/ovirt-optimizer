@@ -32,6 +32,8 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     Map<String, VM> vms;
     Set<Instance> instances;
 
+    private String clusterId;
+
     // Timestamp when the solution was returned from optaplanner
     private long timestamp;
 
@@ -160,5 +162,13 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
 
     public void setVms(Map<String, VM> vms) {
         this.vms = vms;
+    }
+
+    public String getClusterId() {
+        return clusterId;
+    }
+
+    public void setClusterId(String clusterId) {
+        this.clusterId = clusterId;
     }
 }

@@ -3,20 +3,14 @@ package org.ovirt.optimizer.solver.thread;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
-import org.optaplanner.core.api.solver.event.BestSolutionChangedEvent;
-import org.optaplanner.core.api.solver.event.SolverEventListener;
 import org.optaplanner.core.config.solver.SolverConfig;
 import org.optaplanner.core.config.solver.termination.TerminationConfig;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
-import org.ovirt.optimizer.config.ConfigProvider;
-import org.ovirt.optimizer.ovirt.OvirtClient;
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.solver.factchanges.CancelVmRunningFactChange;
-import org.ovirt.optimizer.solver.factchanges.ClusterUpdateAvailable;
-import org.ovirt.optimizer.solver.factchanges.ClusterUpdateAvailableForOptimizer;
+import org.ovirt.optimizer.solver.factchanges.ClusterFactChange;
 import org.ovirt.optimizer.solver.factchanges.EnsureVmRunningFactChange;
-import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.problemspace.ClusterSituation;
 import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
@@ -30,25 +24,20 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 /**
  * This class represents the task for optimization
  * of a single cluster.
  */
-public class ClusterOptimizer implements Runnable {
+public class ClusterOptimizer implements Supplier<OptimalDistributionStepsSolution> {
     private static Logger log = LoggerFactory.getLogger(ClusterOptimizer.class);
-    final Solver<OptimalDistributionStepsSolution> solver;
-    final String clusterId;
-    private volatile OptimalDistributionStepsSolution bestSolution;
-    ClusterInfoUpdater updater;
-    ClusterUpdateAvailable updateHandler;
-    final Finished finishedCallback;
-    final List<File> customDrlFiles;
-
-    public interface Finished {
-        void solvingFinished(ClusterOptimizer planner, Thread thread);
-    }
+    private final Solver<OptimalDistributionStepsSolution> solver;
+    private final String clusterId;
+    private final AtomicReference<OptimalDistributionStepsSolution> bestSolution = new AtomicReference<>();
+    private final List<File> customDrlFiles;
 
     /**
      * Use the state in the current best solution to recompute score of
@@ -63,9 +52,7 @@ public class ClusterOptimizer implements Runnable {
     public HardSoftScore computeScore(Result oldResult) {
         OptimalDistributionStepsSolution sourceSolution = null;
 
-        synchronized (ClusterOptimizer.this) {
-            sourceSolution = bestSolution;
-        }
+        sourceSolution = bestSolution.get();
 
         return SolverUtils.computeScore(sourceSolution,
                 oldResult,
@@ -73,27 +60,9 @@ public class ClusterOptimizer implements Runnable {
                 customDrlFiles);
     }
 
-    public void registerUpdater(ClusterInfoUpdater updater, ClusterUpdateAvailable handler) {
-        this.updater = updater;
-        this.updateHandler = handler;
-
-        if (updater != null && updateHandler != null) {
-            updater.addHandler(updateHandler);
-        }
-    }
-
-    public static ClusterOptimizer optimizeCluster(OvirtClient client, ConfigProvider configProvider, final String clusterId, int maxSteps, Finished finishedCallback) {
-        long timeout = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT)) * 1000;
-        ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout, finishedCallback, configProvider.customRuleFiles());
-        ClusterInfoUpdater updater = new ClusterInfoUpdater(client, configProvider, clusterId);
-        optimizer.registerUpdater(updater, new ClusterUpdateAvailableForOptimizer(clusterId, optimizer.getSolver()));
-        return optimizer;
-    }
-
-    private ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit, Finished finishedCallback,
+    public ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit,
                              List<File> customDrlFiles) {
         this.clusterId = clusterId;
-        this.finishedCallback = finishedCallback;
         this.customDrlFiles = customDrlFiles;
 
         SolverFactory<OptimalDistributionStepsSolution> solverFactory;
@@ -131,95 +100,82 @@ public class ClusterOptimizer implements Runnable {
 
         solver = solverFactory.buildSolver();
 
-        solver.addEventListener(new SolverEventListener<OptimalDistributionStepsSolution>() {
-            @Override
-            public void bestSolutionChanged(BestSolutionChangedEvent<OptimalDistributionStepsSolution> bestSolutionChangedEvent) {
-                // Ignore incomplete solutions
-                if (!solver.isEveryProblemFactChangeProcessed()) {
-                    log.debug("Ignoring incomplete solution");
-                    return;
-                }
+        solver.addEventListener(bestSolutionChangedEvent -> {
+            // Ignore incomplete solutions
+            if (!solver.isEveryProblemFactChangeProcessed()) {
+                log.debug("Ignoring incomplete solution");
+                return;
+            }
 
-                if(!bestSolutionChangedEvent.isNewBestSolutionInitialized()) {
-                    log.debug("Ignoring uninitialized solution");
-                    return;
-                }
+            if(!bestSolutionChangedEvent.isNewBestSolutionInitialized()) {
+                log.debug("Ignoring uninitialized solution");
+                return;
+            }
 
-                synchronized (ClusterOptimizer.this) {
-                    // Get new solution and set the timestamp to current time
-                    bestSolution = bestSolutionChangedEvent.getNewBestSolution();
-                    bestSolution.setTimestamp(System.currentTimeMillis());
+            // Get new solution and set the timestamp to current time
+            OptimalDistributionStepsSolution solution = bestSolutionChangedEvent.getNewBestSolution();
+            solution.setTimestamp(System.currentTimeMillis());
 
-                    log.info(String.format("New solution for %s available (score %s)",
-                            clusterId, bestSolution.getScore().toString()));
+            log.info(String.format("New solution for %s available (score %s)",
+                    clusterId, solution.getScore().toString()));
+            bestSolution.set(solution);
 
-                    if (log.isDebugEnabled()) {
-                        SolverUtils.recomputeScoreUsingScoreDirector(solver, bestSolution);
-                    }
-                }
+            if (log.isDebugEnabled()) {
+                SolverUtils.recomputeScoreUsingScoreDirector(solver, solution);
             }
         });
 
         // Create new solution space
-        bestSolution = new OptimalDistributionStepsSolution();
+        OptimalDistributionStepsSolution solution = new OptimalDistributionStepsSolution();
 
-        bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setInstances(new HashSet<Instance>());
-        bestSolution.setOtherFacts(new HashSet<Object>());
-        bestSolution.setFixedFacts(new HashSet<Object>());
-        bestSolution.setVms(new HashMap<String, VM>());
+        solution.setClusterId(clusterId);
+        solution.setHosts(new HashSet<>());
+        solution.setInstances(new HashSet<>());
+        solution.setOtherFacts(new HashSet<>());
+        solution.setFixedFacts(new HashSet<>());
+        solution.setVms(new HashMap<>());
 
         // Prepare the step placeholders
         List<Migration> migrationSteps = new ArrayList<>();
         for (int i = 0; i < maxSteps; i++) {
             migrationSteps.add(new Migration());
         }
-        bestSolution.setSteps(migrationSteps);
-        bestSolution.establishStepOrdering();
+        solution.setSteps(migrationSteps);
+        solution.establishStepOrdering();
 
-        bestSolution.setTimestamp(System.currentTimeMillis());
+        solution.setTimestamp(System.currentTimeMillis());
 
-        ClusterSituation previous = bestSolution;
+        ClusterSituation previous = solution;
         for (Migration m: migrationSteps) {
             m.recomputeSituationAfter(previous);
             previous = m;
         }
+
+        bestSolution.set(solution);
     }
 
-    public ClusterInfoUpdater getUpdaterInstance() {
-        return updater;
-    }
-
-    void solve() {
+    private void solve() {
         log.info(String.format("Solver for %s starting", clusterId));
-        solver.solve(bestSolution);
+        solver.solve(bestSolution.get());
         log.info(String.format("Solver for %s finished", clusterId));
-        synchronized (this) {
-            bestSolution = solver.getBestSolution();
-        }
+        bestSolution.set(solver.getBestSolution());
     }
 
     public OptimalDistributionStepsSolution getBestSolution() {
-        synchronized (this) {
-            return bestSolution;
-        }
+        return bestSolution.get();
     }
 
     public void terminate() {
         log.info(String.format("Solver thread for %s was asked to terminate", clusterId));
         solver.terminateEarly();
-        updater.removeHandler(updateHandler);
     }
 
-    public void run() {
+    @Override
+    public OptimalDistributionStepsSolution get() {
         log.info(String.format("Solver thread for %s starting", clusterId));
         solve();
-        finishedCallback.solvingFinished(this, Thread.currentThread());
         log.info(String.format("Solver thread for %s finished", clusterId));
-    }
-
-    private Solver getSolver() {
-        return solver;
+        return bestSolution.get();
     }
 
     public String getClusterId() {
@@ -232,5 +188,9 @@ public class ClusterOptimizer implements Runnable {
 
     public void cancelVmIsRunning(String uuid) {
         solver.addProblemFactChange(new CancelVmRunningFactChange(uuid));
+    }
+
+    public void processUpdate(final Set<VM> vms, final Set<Host> hosts, final Set<Object> facts) {
+        solver.addProblemFactChange(new ClusterFactChange(clusterId, vms, hosts, facts));
     }
 }

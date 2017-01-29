@@ -69,11 +69,6 @@
             <artifactId>xpp3_min</artifactId>
             <version>${xpp3_min.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.quartz-scheduler</groupId>
-            <artifactId>quartz</artifactId>
-            <version>${quartz.version}</version>
-        </dependency>
 
         <dependency>
             <groupId>log4j</groupId>

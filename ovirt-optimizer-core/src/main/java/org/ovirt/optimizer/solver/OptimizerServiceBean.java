@@ -10,15 +10,14 @@ import org.ovirt.optimizer.ovirt.OvirtClient;
 import org.ovirt.optimizer.rest.dto.DebugSnapshot;
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.rest.dto.ScoreResult;
-import org.ovirt.optimizer.scheduling.QuartzService;
+import org.ovirt.optimizer.scheduling.ExecutorServiceProducer;
 import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
-import org.ovirt.optimizer.solver.jobs.ClusterDiscoveryTrigger;
 import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
+import org.ovirt.optimizer.solver.thread.ClusterInfoUpdater;
 import org.ovirt.optimizer.solver.thread.ClusterOptimizer;
 import org.ovirt.optimizer.solver.util.SolverUtils;
-import org.quartz.JobDetail;
 import org.slf4j.Logger;
 
 import javax.annotation.ManagedBean;
@@ -34,6 +33,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
  * This is the main service class for computing the optimized
@@ -47,7 +49,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     private Logger log;
 
     @Inject
-    QuartzService scheduler;
+    ExecutorServiceProducer executors;
 
     @Inject
     ClusterDiscovery discovery;
@@ -58,31 +60,22 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     @Inject
     ConfigProvider configProvider;
 
-    QuartzService.Timer discoveryTimer;
-    Set<Thread> threads;
-
     // This attribute is used by the exported API and has to
     // be used in thread safe way
-    final Map<String, ClusterOptimizer> clusterOptimizers = new HashMap<>();
+    final Map<String, ClusterOptimizer> clusterOptimizers = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void create() {
         log.info("oVirt optimizer service starting");
-        threads = new HashSet<>();
         int refresh =
                 Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_CLUSTER_REFRESH));
-        discoveryTimer = scheduler.createTimer(refresh, ClusterDiscoveryTrigger.class);
+        executors.getScheduler().scheduleWithFixedDelay(() -> executors.getThreadPool().submit(this::refreshClusters),
+                0, refresh, TimeUnit.SECONDS);
     }
 
     // Synchronized should not be needed, but is here as a
     // safeguard for prevention from threading mistakes
-    public synchronized void discoveryTimeout(final JobDetail timer) {
-        // Check for possible spurious timeouts from old instances
-        if (timer.getKey() != discoveryTimer.getJobDetail().getKey()) {
-            log.warn(String.format("Unknown timeout from %s", timer.toString()));
-            return;
-        }
-        
+    private void refreshClusters() {
         log.debug("Discovering clusters...");
         Set<String> availableClusters = discovery.getClusters();
         if (availableClusters == null) {
@@ -90,16 +83,8 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
             return;
         }
 
-        Set<String> missingClusters;
-
-        synchronized (clusterOptimizers) {
-            /* Compute a set of clusters that disappeared */
-            missingClusters = new HashSet<>(clusterOptimizers.keySet());
-            missingClusters.removeAll(availableClusters);
-
-            /* Compute a set of new clusters */
-            availableClusters.removeAll(clusterOptimizers.keySet());
-        }
+        /* Compute a set of new clusters */
+        availableClusters.removeAll(clusterOptimizers.keySet());
 
         Properties config = new ConfigProvider().load().getConfig();
         final int maxSteps = Integer.parseInt(config.getProperty(ConfigProvider.SOLVER_STEPS));
@@ -107,84 +92,39 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         for (String clusterId : availableClusters) {
             log.info(String.format("New cluster %s detected", clusterId));
 
-            ClusterOptimizer planner = ClusterOptimizer.optimizeCluster(client,
-                    configProvider,
-                    clusterId,
-                    maxSteps,
-                    new ClusterOptimizer.Finished() {
-                        @Override
-                        public void solvingFinished(ClusterOptimizer planner, Thread thread) {
-                            threads.remove(thread);
-                        }
-                    });
+            long timeout = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_TIMEOUT));
+            int refresh = Integer.parseInt(configProvider.load().getConfig().getProperty(ConfigProvider.SOLVER_DATA_REFRESH));
 
-            Thread updater = new Thread(planner.getUpdaterInstance());
-            Thread solver = new Thread(planner);
+            ClusterOptimizer optimizer = new ClusterOptimizer(clusterId, maxSteps, timeout * 1000,
+                    configProvider.customRuleFiles());
+            ClusterInfoUpdater updater = new ClusterInfoUpdater(client, optimizer);
 
-            updater.start();
-            threads.add(updater);
-
-            solver.start();
-            threads.add(solver);
-
-            synchronized (clusterOptimizers) {
-                clusterOptimizers.put(clusterId, planner);
-            }
-        }
-
-        synchronized (clusterOptimizers) {
-            for (String clusterId : missingClusters) {
-                clusterOptimizers.get(clusterId).terminate();
-                clusterOptimizers.get(clusterId).getUpdaterInstance().terminate();
-                log.info(String.format("Cluster %s was removed", clusterId));
-            }
+            clusterOptimizers.put(clusterId, optimizer);
+            CompletableFuture.supplyAsync(optimizer, executors.getThreadPool())
+                    .thenApply(OptimalDistributionStepsSolution::getClusterId)
+                    .thenApply(clusterOptimizers::remove);
+            executors.getScheduler().scheduleWithFixedDelay(() -> executors.getThreadPool().submit(updater),
+                    0, refresh, TimeUnit.SECONDS);
         }
     }
 
     @PreDestroy
     public void stop() {
         log.info("oVirt service service stopping");
-        discoveryTimer.cancel();
-
-        synchronized (clusterOptimizers) {
-            for (ClusterOptimizer clusterOptimizer : clusterOptimizers.values()) {
-                clusterOptimizer.getUpdaterInstance().terminate();
-                clusterOptimizer.terminate();
-            }
-        }
-
-        log.debug("Waiting for threads to finish");
-        // Iterate over copy of the set as the ending threads will
-        // be removed by callback
-        for (Thread thread : new ArrayList<>(threads)) {
-            try {
-                thread.join();
-            } catch (InterruptedException ex) {
-                Thread.currentThread().interrupt();
-            }
-        }
-        log.info("oVirt service service stopped");
     }
 
     public Set<String> getAllClusters() {
-        synchronized (clusterOptimizers) {
-            return clusterOptimizers.keySet();
-        }
+        return Collections.unmodifiableSet(clusterOptimizers.keySet());
     }
 
     public Set<String> getActiveClusters() {
-        synchronized (clusterOptimizers) {
-            return clusterOptimizers.keySet();
-        }
+        return Collections.unmodifiableSet(clusterOptimizers.keySet());
     }
 
     public void computeVmStart(String cluster, String uuid) {
         ClusterOptimizer clusterOptimizer;
 
-        synchronized (clusterOptimizers) {
-            clusterOptimizer = clusterOptimizers.get(cluster);
-        }
-
+        clusterOptimizer = clusterOptimizers.get(cluster);
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
             return;
@@ -196,10 +136,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public void cancelVmStart(String cluster, String uuid) {
         ClusterOptimizer clusterOptimizer;
 
-        synchronized (clusterOptimizers) {
-            clusterOptimizer = clusterOptimizers.get(cluster);
-        }
-
+        clusterOptimizer = clusterOptimizers.get(cluster);
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
             return;
@@ -212,10 +149,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public ScoreResult recomputeScore(String cluster, Result oldResult) {
         ClusterOptimizer clusterOptimizer;
 
-        synchronized (clusterOptimizers) {
-            clusterOptimizer = clusterOptimizers.get(cluster);
-        }
-
+        clusterOptimizer = clusterOptimizers.get(cluster);
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
             return null;
@@ -233,10 +167,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         ClusterOptimizer clusterOptimizer;
         Result r;
 
-        synchronized (clusterOptimizers) {
-            clusterOptimizer = clusterOptimizers.get(cluster);
-        }
-
+        clusterOptimizer = clusterOptimizers.get(cluster);
         if (clusterOptimizer == null) {
             log.error(String.format("Cluster %s does not exist", cluster));
             r = Result.createEmpty(cluster);
@@ -371,14 +302,12 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
         if (situation == null) {
             // Use the latest information when no base state was provided
-            synchronized (clusterOptimizers) {
-                final ClusterOptimizer clusterOptimizer = clusterOptimizers.get(clusterId);
-                if (clusterOptimizer == null) {
-                    return null;
-                }
-
-                situation = clusterOptimizer.getBestSolution();
+            final ClusterOptimizer clusterOptimizer = clusterOptimizers.get(clusterId);
+            if (clusterOptimizer == null) {
+                return null;
             }
+
+            situation = clusterOptimizer.getBestSolution();
         }
 
         // Mark the scheduled VM as running
@@ -427,14 +356,12 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     public Map<String, DebugSnapshot> getDebugSnapshot() {
         Map<String, DebugSnapshot> snaps = new HashMap<>();
 
-        synchronized (clusterOptimizers) {
-            for (ClusterOptimizer optimizer : clusterOptimizers.values()) {
-                DebugSnapshot snap = new DebugSnapshot();
-                snap.setCluster(optimizer.getClusterId());
-                snap.setState(optimizer.getBestSolution());
-                snap.setResult(solutionToResult(optimizer.getClusterId(), snap.getState()));
-                snaps.put(optimizer.getClusterId(), snap);
-            }
+        for (ClusterOptimizer optimizer : clusterOptimizers.values()) {
+            DebugSnapshot snap = new DebugSnapshot();
+            snap.setCluster(optimizer.getClusterId());
+            snap.setState(optimizer.getBestSolution());
+            snap.setResult(solutionToResult(optimizer.getClusterId(), snap.getState()));
+            snaps.put(optimizer.getClusterId(), snap);
         }
 
         return snaps;
@@ -442,8 +369,6 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
 
     @Override
     public Set<String> knownClusters() {
-        synchronized (clusterOptimizers) {
-            return clusterOptimizers.keySet();
-        }
+        return Collections.unmodifiableSet(clusterOptimizers.keySet());
     }
 }

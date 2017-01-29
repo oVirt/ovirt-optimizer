@@ -90,6 +90,7 @@ public class SolverUtils {
 
         /* Reconstruct the Solution object with current facts */
         OptimalDistributionStepsSolution solution = new OptimalDistributionStepsSolution();
+        solution.setClusterId(sourceSolution.getClusterId());
         solution.setHosts(sourceSolution.getHosts());
         solution.setInstances(primaryInstances);
         solution.setOtherFacts(sourceSolution.getOtherFacts());

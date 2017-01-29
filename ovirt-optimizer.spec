@@ -70,7 +70,6 @@ Requires:       unzip
 %if 0%{?fedora}
 Requires:       mvn(org.antlr:antlr) >= 3
 Requires:       mvn(org.antlr:antlr-runtime) >= 3
-Requires:       mvn(org.quartz-scheduler:quartz) >= 2.2
 %endif
 
 Requires:       mvn(org.apache.httpcomponents:httpclient)
@@ -274,12 +273,6 @@ JBOSS_SYMLINK="%{_javadir}/%{name}/%{name}-core.jar
 %{_optaplanner}/xpp3_min-1.1.4c.jar
 %{_optaplanner}/xstream-1.4.7.jar"
 
-%if 0%{?rhel}
-JBOSS_BUNDLE="target/lib/quartz-*"
-%else
-JBOSS_BUNDLE=""
-%endif
-
 %if 0%{?with_jboss}
 
 # Install the exploded Jboss war to javadir
@@ -291,15 +284,6 @@ ln -sf /etc/%{name}/jboss-%{log_config_file} %{buildroot}%{_javadir}/%{name}/jbo
 
 # Symlink libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
 echo "$JBOSS_SYMLINK" | xargs -d \\n -I@ sh -c "ln -s -t %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib @"
-
-# Copy bundled libs to %{buildroot}%{_javadir}/%{name}/bundled
-if [ "x$JBOSS_BUNDLE" != "x" ]; then
-    echo "$JBOSS_BUNDLE" | xargs -d \\n -I@ sh -c "cp -t %{buildroot}%{_javadir}/%{name}/bundled @"
-fi
-
-# Symlink the bundled libs to %{buildroot}%{_javadir}/%{name}/jboss/WEB-INF/lib
-cp -Rs %{buildroot}%{_javadir}/%{name}/bundled/* %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib || true
-symlinks -rc %{buildroot}%{_javadir}/%{name}/jboss.war/WEB-INF/lib
 
 # Symlink it to Jboss war directory and touch the deploy marker
 install -dm 755 %{buildroot}%{jboss_deployments}
@@ -394,7 +378,7 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 %defattr(644, root, root, 755)
 %config(noreplace) /etc/%{name}/jetty*
 %dir %{_javadir}/%{name}/jetty/%{name}
-%{_javadir}/%{name}/jetty/%{name}/*
+%{_javadir}/%{name}/jetty/%{name}/
 %{jetty_deployments}/*
 %endif
 
@@ -403,10 +387,10 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 %defattr(644, root, root, 755)
 %config(noreplace) /etc/%{name}/jboss*
 %dir %{_javadir}/%{name}/jboss.war
-%{_javadir}/%{name}/jboss.war/*
+%{_javadir}/%{name}/jboss.war/
 %dir %{_javadir}/%{name}/jboss-conf
-%{_javadir}/%{name}/jboss-conf/*
-%{jboss_deployments}/*
+%{_javadir}/%{name}/jboss-conf/
+%{jboss_deployments}/
 %dir /var/log/%{name}/jboss
 %attr(755, root, root) /usr/bin/ovirt-optimizer-jboss
 
@@ -424,17 +408,16 @@ install dist/etc/*.json %{buildroot}%{engine_etc}/ui-plugins/
 %dir %{engine_data}/ui-plugins/ovirt-optimizer-resources
 %config %{engine_etc}/ui-plugins/ovirt-optimizer-config.json
 %{engine_data}/ui-plugins/ovirt-optimizer.json
-%{engine_data}/ui-plugins/ovirt-optimizer-resources/*
+%{engine_data}/ui-plugins/ovirt-optimizer-resources/
 
 %files dependencies
 %defattr(644, root, root, 755)
 %dir %{_javadir}/%{name}/bundled
-%{_javadir}/%{name}/bundled/*
+%{_javadir}/%{name}/bundled/
 %{_optaplanner}
 
 %post dependencies
-/usr/bin/ovirt-optimizer-setup || echo "Optaplanner 6.2.0 could not be installed. Please see the README file for %{name}-%{version} and install it manually"
-
+/usr/bin/ovirt-optimizer-setup || echo "Optaplanner %{optaplanner_version} could not be installed. Please see the README file for %{name}-%{version} and install it manually"
 
 %if %{?with_jetty}
 %post jetty
