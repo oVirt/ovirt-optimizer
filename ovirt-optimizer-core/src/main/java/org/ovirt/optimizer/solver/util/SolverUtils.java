@@ -1,13 +1,16 @@
 package org.ovirt.optimizer.solver.util;
 
 import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.optaplanner.core.api.score.Score;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
@@ -31,14 +34,18 @@ public class SolverUtils {
     private static final Logger log = LoggerFactory.getLogger(SolverUtils.class);
 
     // Cache for the score only solver
-    private static List<File> recordedCustomDrlFiles = Collections.emptyList();
+    private static List<Path> recordedCustomDrlFiles = Collections.emptyList();
     private static Solver scoreOnlySolver = null;
 
-    public static void addCustomDrlFiles(ScoreDirectorFactoryConfig config, List<File> customDrlFiles) {
+    public static void addCustomDrlFiles(ScoreDirectorFactoryConfig config, List<Path> customDrlFiles) {
+        List<File> fileCollection = customDrlFiles.stream()
+                .map(Path::toFile)
+                .collect(Collectors.toList());
+
         if (config.getScoreDrlFileList() != null) {
-            config.getScoreDrlFileList().addAll(customDrlFiles);
+            config.getScoreDrlFileList().addAll(fileCollection);
         } else {
-            config.setScoreDrlFileList(customDrlFiles);
+            config.setScoreDrlFileList(fileCollection);
         }
     }
 
@@ -49,8 +56,8 @@ public class SolverUtils {
      * @param customDrlFiles the list of user provided DRL files
      * @return score only solver
      */
-    public static Solver getScoreOnlySolver(List<File> customDrlFiles) {
-        Set<File> changeDetector = new HashSet<>(customDrlFiles);
+    public static Solver getScoreOnlySolver(List<Path> customDrlFiles) {
+        Set<Path> changeDetector = new HashSet<>(customDrlFiles);
         changeDetector.retainAll(recordedCustomDrlFiles);
 
         if (scoreOnlySolver != null
@@ -70,7 +77,7 @@ public class SolverUtils {
     public static HardSoftScore computeScore(OptimalDistributionStepsSolution sourceSolution,
             Result result,
             Set<String> runningIds,
-            List<File> customDrlFiles) {
+            List<Path> customDrlFiles) {
         log.debug("Reevaluating solution {}", result);
 
         Solver solver = getScoreOnlySolver(customDrlFiles);

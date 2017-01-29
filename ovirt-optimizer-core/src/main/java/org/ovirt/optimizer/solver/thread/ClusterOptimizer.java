@@ -1,6 +1,6 @@
 package org.ovirt.optimizer.solver.thread;
 
-import java.io.File;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -37,7 +37,7 @@ public class ClusterOptimizer implements Supplier<OptimalDistributionStepsSoluti
     private final Solver<OptimalDistributionStepsSolution> solver;
     private final String clusterId;
     private final AtomicReference<OptimalDistributionStepsSolution> bestSolution = new AtomicReference<>();
-    private final List<File> customDrlFiles;
+    private final List<Path> customDrlFiles;
 
     /**
      * Use the state in the current best solution to recompute score of
@@ -61,7 +61,7 @@ public class ClusterOptimizer implements Supplier<OptimalDistributionStepsSoluti
     }
 
     public ClusterOptimizer(final String clusterId, int maxSteps, long unimprovedMilisLimit,
-                             List<File> customDrlFiles) {
+                             List<Path> customDrlFiles) {
         this.clusterId = clusterId;
         this.customDrlFiles = customDrlFiles;
 

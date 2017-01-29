@@ -49,7 +49,7 @@ public class TestOptimizer {
     }
 
     public TestOptimizer(Set<ClusterFeatures> features) {
-        solver = SolverUtils.getScoreOnlySolver(Collections.<File>emptyList());
+        solver = SolverUtils.getScoreOnlySolver(Collections.emptyList());
 
         // Create new solution space
         bestSolution = new OptimalDistributionStepsSolution();

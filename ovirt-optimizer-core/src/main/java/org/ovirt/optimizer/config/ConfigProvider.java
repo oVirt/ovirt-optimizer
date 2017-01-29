@@ -3,9 +3,14 @@ package org.ovirt.optimizer.config;
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Properties;
+import java.util.stream.Collectors;
 
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import org.slf4j.Logger;
@@ -64,22 +69,11 @@ public class ConfigProvider {
 
     @SuppressFBWarnings("DM_DEFAULT_ENCODING")
     public ConfigProvider load() {
-        FileReader reader = null;
-
-        try {
-            reader = new FileReader(configFile);
+        try (FileReader reader = new FileReader(configFile)) {
             config.load(reader);
         } catch (IOException ex) {
             log.warn("Config file {} could not be opened. Using the defaults values with server: {}.",
                     configFile, config.getProperty(SDK_SERVER));
-        } finally {
-            try {
-                if (reader != null) {
-                    reader.close();
-                }
-            } catch (IOException ex) {
-                log.error("The config file could not be closed", ex);
-            }
         }
 
         return this;
@@ -89,27 +83,24 @@ public class ConfigProvider {
         return config;
     }
 
-    public List<File> customRuleFiles() {
-        File dir = new File(config.getProperty(SOLVER_CUSTOM_RULE_DIR));
-        List<File> listOfDrlFiles = new ArrayList<>();
+    public List<Path> customRuleFiles() {
+        Path dir = FileSystems.getDefault().getPath(config.getProperty(SOLVER_CUSTOM_RULE_DIR));
+        final List<Path> candidateFiles;
 
-        File[] candidateFiles = dir.listFiles();
-
-        if (candidateFiles == null) {
-            log.warn("Could not get a list of custom DRL files");
-            return listOfDrlFiles;
+        try {
+            candidateFiles = Files.list(dir).collect(Collectors.toList());
+        } catch (IOException e) {
+            log.warn("Could not get a list of custom DRL files:", e);
+            return Collections.emptyList();
         }
 
-        log.debug("Found {} custom DRL candidate files", candidateFiles.length);
+        log.debug("Found {} custom DRL candidate files", candidateFiles.size());
 
-        for (File input: candidateFiles) {
-            if (input.isFile()
-                    && input.getName().endsWith(".drl")) {
-                listOfDrlFiles.add(input);
-                log.debug("Using {} custom DRL file", input.getName());
-            }
-        }
-
-        return listOfDrlFiles;
+        return candidateFiles.stream()
+                .peek(p -> log.debug("Checking out file {}", p))
+                .filter(Files::isRegularFile)
+                .filter(p -> p.toString().endsWith(".drl"))
+                .peek(p -> log.info("Using {} as custom DRL file", p))
+                .collect(Collectors.toList());
     }
 }
