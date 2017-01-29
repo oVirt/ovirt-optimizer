@@ -1,8 +1,5 @@
 package org.ovirt.optimizer.cdi;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.slf4j.Logger;
-
 import javax.enterprise.context.ApplicationScoped;
 import javax.enterprise.event.Observes;
 import javax.enterprise.inject.spi.AfterDeploymentValidation;
@@ -12,6 +9,9 @@ import javax.enterprise.inject.spi.Extension;
 import javax.enterprise.inject.spi.ProcessBean;
 import java.util.HashSet;
 import java.util.Set;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.slf4j.Logger;
 
 /**
  * Extension for the CDI mechanism that instantiates
@@ -23,8 +23,8 @@ import java.util.Set;
 public class AutoloadExtension implements Extension {
     private final Logger log = org.slf4j.LoggerFactory.getLogger(AutoloadExtension.class);
 
-    private Set<Bean<?>> autoloadBeanList = new HashSet<Bean<?>>();
-    private Set<Bean<?>> loaded = new HashSet<Bean<?>>();
+    private Set<Bean<?>> autoloadBeanList = new HashSet<>();
+    private Set<Bean<?>> loaded = new HashSet<>();
 
     public <T> void collect(@Observes ProcessBean<T> event) {
         if (event.getAnnotated().isAnnotationPresent(Autoload.class) &&

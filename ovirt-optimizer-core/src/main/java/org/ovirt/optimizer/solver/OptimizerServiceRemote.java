@@ -1,13 +1,12 @@
 package org.ovirt.optimizer.solver;
 
+import java.util.Map;
+import java.util.Set;
+
 import org.ovirt.optimizer.rest.dto.DebugSnapshot;
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.rest.dto.ScoreResult;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
-
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public interface OptimizerServiceRemote {
     Map<String, DebugSnapshot> getDebugSnapshot();

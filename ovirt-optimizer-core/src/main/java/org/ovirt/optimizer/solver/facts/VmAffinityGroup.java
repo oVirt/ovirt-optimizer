@@ -1,12 +1,12 @@
 package org.ovirt.optimizer.solver.facts;
 
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-import org.ovirt.engine.sdk.entities.AffinityGroup;
-import org.ovirt.engine.sdk.entities.VM;
-
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+
+import org.codehaus.jackson.annotate.JsonAutoDetect;
+import org.ovirt.engine.sdk.entities.AffinityGroup;
+import org.ovirt.engine.sdk.entities.VM;
 
 @JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
         getterVisibility=JsonAutoDetect.Visibility.NONE,

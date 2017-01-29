@@ -1,9 +1,8 @@
 package org.ovirt.optimizer.solver.facts;
 
-import org.ovirt.engine.sdk.entities.VM;
-
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
+
+import org.ovirt.engine.sdk.entities.VM;
 
 /**
  * This fact object represents one space reservation.

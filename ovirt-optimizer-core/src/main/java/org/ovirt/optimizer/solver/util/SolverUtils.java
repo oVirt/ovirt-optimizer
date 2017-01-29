@@ -1,5 +1,14 @@
 package org.ovirt.optimizer.solver.util;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.optaplanner.core.api.score.Score;
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.score.constraint.ConstraintMatch;
@@ -9,7 +18,6 @@ import org.optaplanner.core.api.solver.SolverFactory;
 import org.optaplanner.core.config.score.director.ScoreDirectorFactoryConfig;
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.ovirt.engine.sdk.entities.Host;
-import org.ovirt.engine.sdk.entities.VM;
 import org.ovirt.optimizer.rest.dto.Result;
 import org.ovirt.optimizer.solver.facts.Instance;
 import org.ovirt.optimizer.solver.facts.RunningVm;
@@ -18,15 +26,6 @@ import org.ovirt.optimizer.solver.problemspace.Migration;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 public class SolverUtils {
     private static final Logger log = LoggerFactory.getLogger(SolverUtils.class);

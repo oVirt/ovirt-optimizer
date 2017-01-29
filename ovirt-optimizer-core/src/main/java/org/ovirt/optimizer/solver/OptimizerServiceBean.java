@@ -1,5 +1,22 @@
 package org.ovirt.optimizer.solver;
 
+import javax.annotation.ManagedBean;
+import javax.annotation.PostConstruct;
+import javax.annotation.PreDestroy;
+import javax.enterprise.context.ApplicationScoped;
+import javax.inject.Inject;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Properties;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.engine.sdk.entities.VM;
@@ -20,23 +37,6 @@ import org.ovirt.optimizer.solver.thread.ClusterOptimizer;
 import org.ovirt.optimizer.solver.util.SolverUtils;
 import org.slf4j.Logger;
 
-import javax.annotation.ManagedBean;
-import javax.annotation.PostConstruct;
-import javax.annotation.PreDestroy;
-import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
-
 /**
  * This is the main service class for computing the optimized
  * Vm to host assignments.
@@ -49,20 +49,20 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     private Logger log;
 
     @Inject
-    ExecutorServiceProducer executors;
+    private ExecutorServiceProducer executors;
 
     @Inject
-    ClusterDiscovery discovery;
+    private ClusterDiscovery discovery;
 
     @Inject
-    OvirtClient client;
+    private OvirtClient client;
 
     @Inject
-    ConfigProvider configProvider;
+    private ConfigProvider configProvider;
 
     // This attribute is used by the exported API and has to
     // be used in thread safe way
-    final Map<String, ClusterOptimizer> clusterOptimizers = new ConcurrentHashMap<>();
+    private final Map<String, ClusterOptimizer> clusterOptimizers = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void create() {
@@ -182,8 +182,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         OptimalDistributionStepsSolution best = clusterOptimizer.getBestSolution();
         String clusterId = clusterOptimizer.getClusterId();
 
-        Result r = solutionToResult(clusterId, best);
-        return r;
+        return solutionToResult(clusterId, best);
     }
 
     private Result solutionToResult(String clusterId, OptimalDistributionStepsSolution solution) {
@@ -192,17 +191,17 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         r.setHardScore(solution.getScore().getHardScore());
         r.setSoftScore(solution.getScore().getSoftScore());
 
-        r.setHosts(new HashSet<String>());
+        r.setHosts(new HashSet<>());
         for (Host h : solution.getHosts()) {
             r.getHosts().add(h.getId());
         }
 
-        r.setVms(new HashSet<String>());
+        r.setVms(new HashSet<>());
         for (VM vm : solution.getVms().values()) {
             r.getVms().add(vm.getId());
         }
 
-        r.setRequestedVms(new HashSet<String>());
+        r.setRequestedVms(new HashSet<>());
         for (Object fact : solution.getFixedFacts()) {
             if (fact instanceof RunningVm) {
                 r.getRequestedVms().add(((RunningVm) fact).getId());
@@ -219,8 +218,8 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
         r.setVmToHost(instanceToHostToVm(solution.getFinalSituation().getInstanceToHostAssignments(), instances));
         r.setCurrentVmToHost(instanceToHostToVm(solution.getInstanceToHostAssignments(), instances));
 
-        r.setBackupReorg(new ArrayList<List<Map<Long, String>>>());
-        r.setBackups(new HashMap<Long, String>());
+        r.setBackupReorg(new ArrayList<>());
+        r.setBackups(new HashMap<>());
 
         // The current backup step to accumulated backup migrations
         List<Map<Long, String>> backupStep = new ArrayList<>();
@@ -259,7 +258,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     private Map<String, Set<String>> hostToInstancesToVms(Map<String, Set<Long>> h2i, Map<Long, Instance> instances) {
         Map<String, Set<String>> h2vm = new HashMap<>();
         for (Map.Entry<String, Set<Long>> hostMap: h2i.entrySet()) {
-            h2vm.put(hostMap.getKey(), new HashSet<String>());
+            h2vm.put(hostMap.getKey(), new HashSet<>());
             for (Long instId: hostMap.getValue()) {
                 Instance inst = instances.get(instId);
                 if (inst.getPrimary()) {
@@ -284,7 +283,7 @@ public class OptimizerServiceBean implements OptimizerServiceRemote {
     @Override
     public ScoreResult recomputeScore(OptimalDistributionStepsSolution situation, Result result) {
         HardSoftScore score = SolverUtils.computeScore(situation, result,
-                Collections.<String>emptySet(),
+                Collections.emptySet(),
                 configProvider.customRuleFiles());
 
         ScoreResult scoreResult = new ScoreResult();

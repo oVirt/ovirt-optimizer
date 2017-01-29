@@ -1,14 +1,14 @@
 package org.ovirt.optimizer.config;
 
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
-import org.slf4j.Logger;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
+
+import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
+import org.slf4j.Logger;
 
 public class ConfigProvider {
     static private Logger log = org.slf4j.LoggerFactory.getLogger(ConfigProvider.class);

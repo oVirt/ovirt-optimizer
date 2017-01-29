@@ -1,30 +1,30 @@
 package org.ovirt.optimizer.solver.problemspace;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
 import org.optaplanner.core.api.domain.entity.PlanningEntity;
 import org.optaplanner.core.api.domain.variable.CustomShadowVariable;
 import org.optaplanner.core.api.domain.variable.PlanningVariable;
 import org.ovirt.engine.sdk.entities.Host;
 import org.ovirt.optimizer.solver.facts.Instance;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
 @PlanningEntity
 public class Migration implements ClusterSituation {
     /* planning variables */
-    Instance instance;
-    Host destination;
+    private Instance instance;
+    private Host destination;
 
     /* steps to finish (0 means final state) */
-    int stepsToFinish;
+    private int stepsToFinish;
 
     /* shadow variables */
-    Map<Long, String> instanceToHostAssignments;
-    Map<String, Set<Long>> hostToInstanceAssignments;
-    boolean start;
-    boolean valid;
+    private Map<Long, String> instanceToHostAssignments;
+    private Map<String, Set<Long>> hostToInstanceAssignments;
+    private boolean start;
+    private boolean valid;
 
     public Migration() {
         instanceToHostAssignments = new HashMap<>();
@@ -87,11 +87,7 @@ public class Migration implements ClusterSituation {
         }
 
         if (destination != null) {
-            Set<Long> hostSet = hostToInstanceAssignments.get(destination.getId());
-            if (hostSet == null) {
-                hostSet = new HashSet<>();
-                hostToInstanceAssignments.put(destination.getId(), hostSet);
-            }
+            Set<Long> hostSet = hostToInstanceAssignments.computeIfAbsent(destination.getId(), k -> new HashSet<>());
             hostSet.add(instance.getId());
         }
 

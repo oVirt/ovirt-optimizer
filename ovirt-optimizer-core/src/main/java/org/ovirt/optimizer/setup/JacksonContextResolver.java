@@ -1,5 +1,15 @@
 package org.ovirt.optimizer.setup;
 
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.ext.ContextResolver;
+import javax.ws.rs.ext.Provider;
+import javax.xml.datatype.XMLGregorianCalendar;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import org.codehaus.jackson.Version;
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.codehaus.jackson.annotate.JsonTypeInfo;
@@ -16,16 +26,6 @@ import org.ovirt.engine.sdk.decorators.Network;
 import org.ovirt.engine.sdk.decorators.SchedulingPolicy;
 import org.ovirt.engine.sdk.decorators.VM;
 import org.ovirt.engine.sdk.entities.BaseResource;
-
-import javax.ws.rs.Produces;
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.ext.ContextResolver;
-import javax.ws.rs.ext.Provider;
-import javax.xml.datatype.XMLGregorianCalendar;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Provider
 @Produces(MediaType.APPLICATION_JSON)

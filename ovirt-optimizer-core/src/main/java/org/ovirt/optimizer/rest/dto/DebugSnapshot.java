@@ -1,8 +1,8 @@
 package org.ovirt.optimizer.rest.dto;
 
-import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
-
 import javax.xml.bind.annotation.XmlRootElement;
+
+import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 
 @XmlRootElement
 public class DebugSnapshot {

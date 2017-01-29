@@ -13,7 +13,7 @@ import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
  * not there already.
  */
 public class EnsureVmRunningFactChange implements ProblemFactChange {
-    final String uuid;
+    private final String uuid;
 
     public EnsureVmRunningFactChange(String uuid) {
         this.uuid = uuid;

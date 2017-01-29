@@ -1,5 +1,15 @@
 package org.ovirt.optimizer.solver.thread;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
+
 import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
 import org.optaplanner.core.api.solver.Solver;
 import org.optaplanner.core.api.solver.SolverFactory;
@@ -17,16 +27,6 @@ import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 import org.ovirt.optimizer.solver.util.SolverUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.io.File;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Supplier;
 
 /**
  * This class represents the task for optimization
@@ -56,7 +56,7 @@ public class ClusterOptimizer implements Supplier<OptimalDistributionStepsSoluti
 
         return SolverUtils.computeScore(sourceSolution,
                 oldResult,
-                Collections.<String>emptySet(),
+                Collections.emptySet(),
                 customDrlFiles);
     }
 

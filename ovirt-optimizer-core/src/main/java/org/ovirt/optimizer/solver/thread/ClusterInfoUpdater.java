@@ -1,5 +1,10 @@
 package org.ovirt.optimizer.solver.thread;
 
+import java.io.IOException;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Set;
+
 import org.jboss.resteasy.util.HttpResponseCodes;
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.decorators.Cluster;
@@ -34,11 +39,6 @@ import org.ovirt.optimizer.solver.facts.VmStats;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
-import java.util.Collection;
-import java.util.HashSet;
-import java.util.Set;
-
 /**
  * This class implements a thread that monitors a cluster for
  * fact changes (new or missing VMs or hosts)
@@ -46,9 +46,9 @@ import java.util.Set;
 public class ClusterInfoUpdater implements Runnable {
     private static Logger log = LoggerFactory.getLogger(ClusterInfoUpdater.class);
 
-    String clusterId;
-    OvirtClient ovirtClient;
-    ClusterOptimizer optimizer;
+    private String clusterId;
+    private OvirtClient ovirtClient;
+    private ClusterOptimizer optimizer;
 
     public ClusterInfoUpdater(OvirtClient client, ClusterOptimizer optimizer) {
         this.clusterId = optimizer.getClusterId();

@@ -1,12 +1,5 @@
 package org.ovirt.optimizer.rest;
 
-import org.ovirt.optimizer.config.ConfigProvider;
-import org.ovirt.optimizer.rest.dto.DebugSnapshot;
-import org.ovirt.optimizer.rest.dto.Result;
-import org.ovirt.optimizer.rest.dto.ScoreResult;
-import org.ovirt.optimizer.solver.OptimizerServiceRemote;
-import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
-
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -17,20 +10,25 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.MediaType;
 import java.io.IOException;
-import java.util.Collections;
-import java.util.List;
 import java.util.Map;
+
+import org.ovirt.optimizer.config.ConfigProvider;
+import org.ovirt.optimizer.rest.dto.DebugSnapshot;
+import org.ovirt.optimizer.rest.dto.Result;
+import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.solver.OptimizerServiceRemote;
+import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 
 @Path("/debug")
 public class DebugResource {
     @Inject
-    OptimizerServiceRemote optimizer;
+    private OptimizerServiceRemote optimizer;
 
     @Context
     org.jboss.resteasy.spi.HttpResponse response;
 
     @Inject
-    ConfigProvider configProvider;
+    private ConfigProvider configProvider;
 
     @GET
     @Produces(MediaType.APPLICATION_JSON)

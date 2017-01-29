@@ -53,11 +53,11 @@ public class TestOptimizer {
 
         // Create new solution space
         bestSolution = new OptimalDistributionStepsSolution();
-        bestSolution.setHosts(new HashSet<Host>());
-        bestSolution.setInstances(new HashSet<Instance>());
-        bestSolution.setOtherFacts(new HashSet<Object>());
-        bestSolution.setFixedFacts(new HashSet<Object>());
-        bestSolution.setVms(new HashMap<String, VM>());
+        bestSolution.setHosts(new HashSet<>());
+        bestSolution.setInstances(new HashSet<>());
+        bestSolution.setOtherFacts(new HashSet<>());
+        bestSolution.setFixedFacts(new HashSet<>());
+        bestSolution.setVms(new HashMap<>());
 
         // Create cluster
         cluster = new Cluster();
@@ -189,12 +189,12 @@ public class TestOptimizer {
 
 
     public TestOptimizer enablePolicyUnit(PolicyUnit unit, int factor) {
-        bestSolution.getFixedFacts().add(new PolicyUnitEnabled(unit.getUuid().toString(), factor));
+        bestSolution.getFixedFacts().add(new PolicyUnitEnabled(unit.getUuid(), factor));
         return this;
     }
 
     public TestOptimizer enablePolicyUnit(PolicyUnit unit) {
-        bestSolution.getFixedFacts().add(new PolicyUnitEnabled(unit.getUuid().toString(), 1));
+        bestSolution.getFixedFacts().add(new PolicyUnitEnabled(unit.getUuid(), 1));
         return this;
     }
 

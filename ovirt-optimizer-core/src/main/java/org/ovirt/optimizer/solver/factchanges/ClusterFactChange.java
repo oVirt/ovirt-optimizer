@@ -1,5 +1,13 @@
 package org.ovirt.optimizer.solver.factchanges;
 
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.Set;
+
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.optaplanner.core.impl.solver.ProblemFactChange;
 import org.ovirt.engine.sdk.entities.Host;
@@ -12,25 +20,17 @@ import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
-import java.util.Set;
-
 /**
  * This class implements Optaplanner's ProblemFactChange functionality and is used to
  * asynchronously update data in the Optaplanner's solver.
  */
 public class ClusterFactChange implements ProblemFactChange {
-    static final Logger log = LoggerFactory.getLogger(ClusterFactChange.class);
+    private static final Logger log = LoggerFactory.getLogger(ClusterFactChange.class);
 
-    final Set<VM> vms;
-    final Set<Host> hosts;
-    final Set<Object> facts;
-    final String clusterId;
+    private final Set<VM> vms;
+    private final Set<Host> hosts;
+    private final Set<Object> facts;
+    private final String clusterId;
 
     public ClusterFactChange(String clusterId, Set<VM> vms, Set<Host> hosts, Set<Object> facts) {
         this.vms = vms;

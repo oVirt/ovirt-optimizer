@@ -1,18 +1,17 @@
 package org.ovirt.optimizer.ovirt;
 
+import javax.inject.Singleton;
+import java.io.IOException;
+import java.util.Properties;
+
 import org.ovirt.engine.sdk.Api;
 import org.ovirt.engine.sdk.exceptions.ServerException;
 import org.ovirt.engine.sdk.exceptions.UnsecuredConnectionAttemptError;
 import org.ovirt.engine.sdk4.Connection;
 import org.ovirt.engine.sdk4.ConnectionBuilder;
-import org.ovirt.engine.sdk4.builders.ApiBuilder;
 import org.ovirt.optimizer.config.ConfigProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.inject.Singleton;
-import java.io.IOException;
-import java.util.Properties;
 
 /**
  * The configuration is read from /etc/ovirt-optimizer/ovirt-optimizer.properties
@@ -33,21 +32,20 @@ public class OvirtClient {
 
     static private Logger log = LoggerFactory.getLogger(OvirtClient.class);
 
-    String server;
-    String protocol;
-    String port;
-    String username;
-    String password;
-    String caStore;
+    private String server;
+    private String protocol;
+    private String port;
+    private String username;
+    private String password;
+    private String caStore;
     private int requestTimeout;
 
-    final Properties config;
     private Api api;
     private Connection api4;
 
     public OvirtClient() {
         /* Create config with default values */
-        config = new ConfigProvider().load().getConfig();
+        Properties config = new ConfigProvider().load().getConfig();
 
         this.server = config.getProperty(ConfigProvider.SDK_SERVER);
         this.protocol = config.getProperty(ConfigProvider.SDK_PROTOCOL);

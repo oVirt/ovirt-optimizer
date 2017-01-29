@@ -1,18 +1,18 @@
 package org.ovirt.optimizer.solver.factchanges;
 
+import java.util.Iterator;
+
 import org.optaplanner.core.impl.score.director.ScoreDirector;
 import org.optaplanner.core.impl.solver.ProblemFactChange;
 import org.ovirt.optimizer.solver.facts.RunningVm;
 import org.ovirt.optimizer.solver.problemspace.OptimalDistributionStepsSolution;
-
-import java.util.Iterator;
 
 /**
  * This Problem Fact Change routine removes facts that will
  * ensure some VM is running.
  */
 public class CancelVmRunningFactChange implements ProblemFactChange {
-    final String uuid;
+    private final String uuid;
 
     public CancelVmRunningFactChange(String uuid) {
         this.uuid = uuid;

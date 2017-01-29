@@ -1,9 +1,9 @@
 package org.ovirt.optimizer.solver.facts;
 
+import java.math.BigDecimal;
+
 import org.codehaus.jackson.annotate.JsonAutoDetect;
 import org.ovirt.engine.sdk.entities.Statistic;
-
-import java.math.BigDecimal;
 
 @JsonAutoDetect(fieldVisibility=JsonAutoDetect.Visibility.ANY,
         getterVisibility=JsonAutoDetect.Visibility.NONE,

@@ -1,12 +1,5 @@
 package org.ovirt.optimizer.rest;
 
-import org.ovirt.optimizer.rest.dto.Result;
-import org.ovirt.optimizer.rest.dto.ScoreResult;
-import org.ovirt.optimizer.rest.dto.VmIdRequest;
-import org.ovirt.optimizer.solver.OptimizerServiceRemote;
-import org.ovirt.optimizer.solver.facts.RunningVm;
-import org.slf4j.Logger;
-
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
 import javax.ws.rs.GET;
@@ -18,8 +11,13 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.Context;
 import javax.ws.rs.core.Response;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
+
+import org.ovirt.optimizer.rest.dto.Result;
+import org.ovirt.optimizer.rest.dto.ScoreResult;
+import org.ovirt.optimizer.rest.dto.VmIdRequest;
+import org.ovirt.optimizer.solver.OptimizerServiceRemote;
+import org.slf4j.Logger;
 
 /**
  * This is the main endpoint for getting the optimization results.
@@ -34,7 +32,7 @@ public class ResultResource {
     org.jboss.resteasy.spi.HttpResponse response;
 
     @Inject
-    OptimizerServiceRemote optimizer;
+    private OptimizerServiceRemote optimizer;
 
     @GET
     @Path("/")

@@ -1,16 +1,5 @@
 package org.ovirt.optimizer.solver.problemspace;
 
-import org.codehaus.jackson.annotate.JsonIgnore;
-import org.optaplanner.core.api.domain.solution.PlanningEntityCollectionProperty;
-import org.optaplanner.core.api.domain.solution.PlanningSolution;
-import org.optaplanner.core.api.domain.solution.Solution;
-import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
-import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
-import org.ovirt.engine.sdk.entities.Host;
-import org.ovirt.engine.sdk.entities.VM;
-import org.ovirt.optimizer.cdi.LoggerFactory;
-import org.ovirt.optimizer.solver.facts.Instance;
-
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -19,18 +8,28 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.codehaus.jackson.annotate.JsonIgnore;
+import org.optaplanner.core.api.domain.solution.PlanningEntityCollectionProperty;
+import org.optaplanner.core.api.domain.solution.PlanningSolution;
+import org.optaplanner.core.api.domain.solution.Solution;
+import org.optaplanner.core.api.domain.valuerange.ValueRangeProvider;
+import org.optaplanner.core.api.score.buildin.hardsoft.HardSoftScore;
+import org.ovirt.engine.sdk.entities.Host;
+import org.ovirt.engine.sdk.entities.VM;
+import org.ovirt.optimizer.solver.facts.Instance;
+
 @PlanningSolution
 public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>,
                                                          ClusterSituation {
     @JsonIgnore
     private HardSoftScore score;
 
-    List<Migration> steps;
-    Set<Host> hosts;
-    Set<Object> otherFacts;
-    Set<Object> fixedFacts;
-    Map<String, VM> vms;
-    Set<Instance> instances;
+    private List<Migration> steps;
+    private Set<Host> hosts;
+    private Set<Object> otherFacts;
+    private Set<Object> fixedFacts;
+    private Map<String, VM> vms;
+    private Set<Instance> instances;
 
     private String clusterId;
 
@@ -115,7 +114,7 @@ public class OptimalDistributionStepsSolution implements Solution<HardSoftScore>
     public Map<String, Set<Long>> getHostToInstanceAssignments() {
         Map<String, Set<Long>> situation = new HashMap<>();
         for (Host h: hosts) {
-            situation.put(h.getId(), new HashSet<Long>());
+            situation.put(h.getId(), new HashSet<>());
         }
 
         for (Instance instance: instances) {

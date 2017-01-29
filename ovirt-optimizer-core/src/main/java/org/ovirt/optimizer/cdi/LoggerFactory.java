@@ -1,9 +1,9 @@
 package org.ovirt.optimizer.cdi;
 
-import org.slf4j.Logger;
-
 import javax.enterprise.inject.Produces;
 import javax.enterprise.inject.spi.InjectionPoint;
+
+import org.slf4j.Logger;
 
 /**
  * Implementation of Log object producer for usage in DI environment

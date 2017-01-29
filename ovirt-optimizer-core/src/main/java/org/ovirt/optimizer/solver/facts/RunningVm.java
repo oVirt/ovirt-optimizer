@@ -1,8 +1,8 @@
 package org.ovirt.optimizer.solver.facts;
 
-import org.codehaus.jackson.annotate.JsonAutoDetect;
-
 import javax.xml.bind.annotation.XmlRootElement;
+
+import org.codehaus.jackson.annotate.JsonAutoDetect;
 
 /**
  * This fact represents a request that ensures a Vm with certain

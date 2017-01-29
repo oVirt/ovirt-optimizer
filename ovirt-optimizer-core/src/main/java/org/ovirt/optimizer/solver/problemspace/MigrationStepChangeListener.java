@@ -34,7 +34,7 @@ public class MigrationStepChangeListener implements VariableListener<Migration> 
     public void afterVariableChanged(ScoreDirector scoreDirector, Migration entity) {
         logger.trace("Variable changed in {} ({})", entity.toString(), entity.getStepsToFinish());
         OptimalDistributionStepsSolution solution = (OptimalDistributionStepsSolution)scoreDirector.getWorkingSolution();
-        ClusterSituation situation = (ClusterSituation)solution;
+        ClusterSituation situation = solution;
 
         boolean stillOK = true;
 
