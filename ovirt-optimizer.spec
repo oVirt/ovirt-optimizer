@@ -1,5 +1,5 @@
 # The version macro to be redefined by Jenkins build when needed
-%define project_version 0.15-SNAPSHOT
+%define project_version 0.15
 %define project_release 1
 %define optaplanner_version 6.4.0.Final
 
@@ -464,6 +464,9 @@ echo ${JBOSS_MVN} | %{mvn_sed} | xargs build-jar-repository %{_javadir}/%{name}/
 %endif
 
 %changelog
+* Wed Nov 29 2017 Martin Sivak <msivak@redhat.com> 0.15-1
+- Threading model optimization and major code improvements
+
 * Mon Nov 21 2016 Martin Sivak <msivak@redhat.com> 0.14-1
 - Fix (add) handling of SDKv4 errors
 
